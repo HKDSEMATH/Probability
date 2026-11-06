@@ -138,11 +138,17 @@
         #question-display mjx-container,
         #l3-area mjx-container,
         #l3-blocks mjx-container,
-        #mc-options mjx-container { margin: 0 0.25em !important; font-size: 1em !important; }
+        #mc-options mjx-container,
+        #error-log-list mjx-container,
+        #error-log-question mjx-container,
+        #error-log-mc-options mjx-container { margin: 0 0.25em !important; font-size: 1em !important; }
         #question-display mjx-container svg,
         #l3-area mjx-container svg,
         #l3-blocks mjx-container svg,
-        #mc-options mjx-container svg { display: inline-block !important; }
+        #mc-options mjx-container svg,
+        #error-log-list mjx-container svg,
+        #error-log-question mjx-container svg,
+        #error-log-mc-options mjx-container svg { display: inline-block !important; }
         .option-btn mjx-container { display: block; margin-left: auto !important; margin-right: auto !important; }
         /* Canonical MC option box rules (family-wide, do not regress) */
         #mc-options .option-btn { white-space: normal; overflow-wrap: break-word; word-break: break-word; }
@@ -247,6 +253,20 @@
                     <span class="text-sm font-bold text-amber-300">Total Marks: <span id="total-marks" class="text-xl font-extrabold text-yellow-300">0</span></span>
                 </div>
             </div>
+        </div>
+
+        <!-- Error Log Book -->
+        <div class="glass-panel rounded-2xl p-5 shadow-xl border border-red-500/30 relative">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-slate-700/60 pb-3">
+                <h3 class="text-lg font-bold text-red-400 flex items-center gap-2">📕 Error Log Book</h3>
+                <span id="error-log-count" class="text-xs font-semibold text-slate-400 bg-slate-900/70 border border-slate-700 rounded-lg px-3 py-1">Empty</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Wrong answers are saved here. Click <strong class="text-red-300">Unhide Questions</strong> to see them, then press Redo — a correct answer earns back its mark and moves automatically to the next part or question.</p>
+            <div class="flex items-center justify-between gap-2">
+                <button id="error-log-toggle" onclick="toggleErrorLogList()" class="bg-red-600 hover:bg-red-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition active:scale-95">👁 Unhide Questions</button>
+                <span id="error-log-empty" class="hidden text-sm italic text-slate-400">No mistakes logged — well done! 🎉</span>
+            </div>
+            <div id="error-log-list" class="hidden space-y-2 mt-3 max-h-72 overflow-y-auto pr-1"></div>
         </div>
 
         <div class="glass-panel rounded-2xl p-6 shadow-xl">
@@ -415,48 +435,38 @@
         </div>
     </div>
 
-    <!-- WRONG ANSWER TECHNIQUE REFLECTION MODAL -->
-    <div id="wrong-reflection-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-[60] p-4 backdrop-blur-md transition-opacity">
-        <div class="glass-panel border-2 border-red-500/40 max-w-md w-full rounded-2xl shadow-2xl p-6 flex flex-col">
-            <div class="flex items-center gap-3 mb-4 border-b border-slate-700 pb-3">
-                <span class="text-3xl">🛑</span>
-                <h3 class="text-xl font-bold text-red-400">Wait! Let's Reflect</h3>
+    <!-- ERROR LOG BOOK REDO MODAL -->
+    <div id="error-log-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-[60] p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-panel border-2 border-red-500/40 max-w-lg w-full rounded-2xl shadow-2xl p-6 flex flex-col max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between gap-3 mb-4 border-b border-slate-700 pb-3">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">📕</span>
+                    <div>
+                        <h3 class="text-xl font-bold text-red-400">Error Log Book</h3>
+                        <p id="error-log-level" class="text-xs text-slate-400"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="error-log-reward" class="text-sm font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-full px-3 py-1">+1 mark</span>
+                    <button onclick="closeErrorLog()" class="text-slate-400 hover:text-white text-2xl font-bold leading-none">&times;</button>
+                </div>
             </div>
-            <p class="text-slate-300 mb-6 text-sm">You got that one wrong. Before moving on, which <strong>technique</strong> was primarily needed to solve that question?</p>
 
-            <div class="space-y-3">
-                <button onclick="submitWrongReflection('freq_table')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Frequency / Relative Frequency</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(\dfrac{\text{frequency}}{\text{total frequency}}\)</span>
-                </button>
-                <button onclick="submitWrongReflection('list_outcomes')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">List Outcomes (Sample Space)</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">draw the outcome table</span>
-                </button>
-                <button onclick="submitWrongReflection('fraction_count')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">\(P =\) Favourable ÷ Total</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">then solve for the unknown</span>
-                </button>
-                <button onclick="submitWrongReflection('combinations')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Combinations \(C(n,r)\)</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(\dfrac{C(a,r)C(b,k-r)}{C(a+b,k)}\)</span>
-                </button>
-                <button onclick="submitWrongReflection('arrangement')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Queue / Arrangement</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">gaps + blocks</span>
-                </button>
-                <button onclick="submitWrongReflection('turn_game')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Turn-taking Game</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(P = \dfrac{s}{1-r}\)</span>
-                </button>
-                <button onclick="submitWrongReflection('binomial')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Independent Trials (Binomial)</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(C(n,k)p^k(1-p)^{n-k}\)</span>
-                </button>
-                <button onclick="submitWrongReflection('use_a')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
-                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Use the Part (a) Result</span>
-                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">substitute the earlier part</span>
-                </button>
+            <div id="error-log-question" class="qtext text-xl sm:text-2xl text-white mb-4 text-left min-h-[60px] leading-relaxed"></div>
+            <p id="error-log-mode-hint" class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 text-center"></p>
+
+            <div id="error-log-mc-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+
+            <div id="error-log-fill-area" class="hidden">
+                <div class="flex gap-2 w-full">
+                    <input type="text" id="error-log-input" placeholder="e.g. 13/81" oninput="updateErrorLogPreview()" onkeypress="if(event.key==='Enter')submitErrorLogFill()" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-lg font-mono text-white outline-none focus:border-amber-500 transition shadow-inner">
+                    <button onclick="submitErrorLogFill()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 rounded-lg text-base transition shadow-md active:scale-95">Submit</button>
+                </div>
+                <div id="error-log-helpers" class="flex flex-wrap gap-2 justify-center w-full mt-2"></div>
+                <div class="w-full p-3 bg-slate-900/60 border border-slate-700 rounded-lg text-center mt-2">
+                    <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 block">Live Answer Preview</span>
+                    <div id="error-log-preview" class="text-xl text-slate-300 min-h-[44px] flex items-center justify-center">Empty</div>
+                </div>
             </div>
         </div>
     </div>
@@ -473,9 +483,9 @@
     <script>
         // Deployed Google Apps Script Web App URL
         const GOOGLE_SCRIPT_URL =
-            'https://script.google.com/macros/s/AKfycbySrOrfQ6RZEeiTMlT2PFOEqUjgK7qkVDe-pR5SG2c7KJer1mX0-gOlFxX0zy47CzYAVQ/exec';
+            'https://script.google.com/macros/s/AKfycbybFSAODKwifwclDTUhaKiPjC20eIaUGdiBBttHXaieZP_ydlQBQxvLMjTl9PSjums/exec';
 
-        const APP_VERSION = '4';
+        const APP_VERSION = '5';
         (function watchAppVersion() {
             const file = (location.pathname.split('/').pop() || 'index.html').split('?')[0];
             const check = () => {
@@ -501,7 +511,13 @@
         let currentQuestionMode = 'mc'; // state for current specific question: paper-driven ('Paper 2'=mc, else fill)
         let currentSets = [];    // Level 3: array of question sets (each set = array of parts)
         let currentSetIndex = 0;
-        let activePart = null;   // the part currently being answered (for reflection / AI tutor)
+        let activePart = null;   // the part currently being answered (for the AI tutor)
+        let errorLog = [];            // one card per full question; parts + wrongIdxs
+        let errorLogExpanded = false; // questions stay hidden until the student clicks Unhide
+        let activeErrorEntry = null;  // the card being redone
+        let activeErrorPartIdx = 0;   // which part of the card is being redone
+        let activeErrorPart = null;   // the part object being redone
+        let errorLogSessionRecovered = 0; // marks recovered in the current redo session
 
         // --- SCORE BOARD ---
         // Full marks per level, marks deducted per heart lost. Marks accumulate across replays.
@@ -1579,6 +1595,7 @@
             document.getElementById('display-no').textContent = sNo;
 
             loadScores();
+            loadErrorLog();
 
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.remove('hidden');
@@ -1615,6 +1632,7 @@
                 }
             }
             updateScoreboardUI();
+            renderErrorLogBook();
         }
 
         // --- SCORE BOARD LOGIC ---
@@ -1669,7 +1687,11 @@
                 badgeRecords = { level1: false, level2: false, level3: false };
                 levelStats = { level1: { correct: 0, total: 0 }, level2: { correct: 0, total: 0 }, level3: { correct: 0, total: 0 } };
                 scoreTotals = { level1: 0, level2: 0, level3: 0 };
+                errorLog = [];
+                errorLogExpanded = false;
+                activeErrorEntry = null;
                 saveScores();
+                saveErrorLog();
                 updatePassportUI();
                 showToast("Progress and marks reset.", "info");
             }
@@ -1709,7 +1731,9 @@
                     usedTexts.add(tKey);
                     usedOpts.add(oKey);
                     usedAns.add(aKey);
+                    const setId = 'set_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
                     parts.forEach((part, pi) => {
+                        part.setId = setId;
                         part.setNo = i + 1;
                         part.partIdx = pi;
                         part.partLabel = ['(a)', '(b)', '(c)'][pi];
@@ -1958,6 +1982,7 @@
                 showToast(`Part ${currentSets[currentSetIndex][pi].partLabel} correct! Awesome job.`, "success");
 
                 const set = currentSets[currentSetIndex];
+                removeErrorLogPart(set[pi], currentLevel, set);
                                 animateCorrect();
                                 set[pi].done = true;
                 rebuildL3Block(pi);
@@ -1973,8 +1998,7 @@
                     }, 700);
                 }
             } else {
-                                animateWrong();
-                                showWrongReflectionModal();
+                handleWrongAnswer(currentSets[currentSetIndex][pi], currentSets[currentSetIndex]);
             }
         }
 
@@ -2029,6 +2053,7 @@
             if (isCorrect) {
                 // Track correct attempts
                 levelStats[`level${currentLevel}`].correct++;
+                removeErrorLogPart(currentQuestions[currentQuestionIndex], currentLevel, null);
                                 animateCorrect();
                                 showToast("Correct! Awesome job.", "success");
                 currentQuestionIndex++;
@@ -2039,43 +2064,42 @@
                     renderQuestion();
                 }
             } else {
-                // Instantly pop up the wrong reflection modal before deducting life
-                                animateWrong();
-                                showWrongReflectionModal();
+                handleWrongAnswer(currentQuestions[currentQuestionIndex], null);
             }
         }
 
-        function showWrongReflectionModal() {
-            const modal = document.getElementById('wrong-reflection-modal');
-            modal.classList.remove('hidden');
-            if(window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([modal]).catch(() => {});
+        // Safe MathJax typeset: window.MathJax is only the config object until the
+        // CDN script finishes loading, so wait for the startup promise when needed.
+        function mjTypeset(elements) {
+            if (!window.MathJax) return;
+            const go = () => {
+                try {
+                    const p = elements ? MathJax.typesetPromise(elements) : MathJax.typesetPromise();
+                    if (p && p.catch) p.catch(() => {});
+                } catch (e) { /* ignore */ }
+            };
+            if (typeof MathJax.typesetPromise === 'function') { go(); return; }
+            if (MathJax.startup && MathJax.startup.promise && typeof MathJax.startup.promise.then === 'function') {
+                MathJax.startup.promise.then(go).catch(() => {});
+            }
         }
 
-        function submitWrongReflection(selectedLaw) {
-            const q = (currentLevel === 3) ? activePart : currentQuestions[currentQuestionIndex];
-            const actualLaw = q.firstStepLaw;
+        // --- ERROR LOG BOOK: wrong answers are saved for mark recovery ---
+        function handleWrongAnswer(q, setParts) {
+            recordErrorLog(q, currentLevel, setParts);
+            animateWrong();
+            showWrongFeedback();
 
-            let isLawCorrect = (selectedLaw === actualLaw);
-            if (actualLaw === 'use_a' && selectedLaw !== '') isLawCorrect = true;
-
-            document.getElementById('wrong-reflection-modal').classList.add('hidden');
-
-            if (isLawCorrect) {
-                showToast("Good reflection! You identified the correct technique to start with.", "success");
-            } else {
-                showToast("Not quite! Remember to check the Formula sheet or ask AI Tutor.", "error");
-            }
-
-            // Deduct life and shake the game screen to indicate a mistake
             lives--;
             updateLivesUI();
             heartBreak();
             updateLiveScore();
-            showWrongFeedback();
 
             const gameArea = document.getElementById('main-game-area');
-            gameArea.classList.add('shake');
-            setTimeout(() => gameArea.classList.remove('shake'), 400);
+            if (gameArea) {
+                gameArea.classList.add('shake');
+                setTimeout(() => gameArea.classList.remove('shake'), 400);
+            }
 
             if (lives <= 0) {
                 setTimeout(() => {
@@ -2083,6 +2107,380 @@
                     quitGame();
                 }, 500);
             }
+        }
+
+        function getErrorLogStorageKey() {
+            const base = getScoreStorageKey();
+            return base ? base + '_errors' : null;
+        }
+
+        function loadErrorLog() {
+            errorLog = [];
+            errorLogExpanded = false;
+            activeErrorEntry = null;
+            activeErrorPart = null;
+            activeErrorPartIdx = 0;
+            const key = getErrorLogStorageKey();
+            if (!key) return;
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    if (Array.isArray(saved)) {
+                        errorLog = saved.filter(e => e && e.id).map(e => {
+                            if (!Array.isArray(e.parts) || e.parts.length === 0) {
+                                e.parts = [snapshotErrorPart({
+                                    partLabel: e.partLabel || '',
+                                    qHtml: e.qHtml || e.text || '',
+                                    marks: e.marks || 1,
+                                    answerStr: e.answerStr,
+                                    mcAnswerStr: e.mcAnswerStr || '',
+                                    options: e.options || [],
+                                    acceptList: e.acceptList || null,
+                                    mode: e.mode || (e.paper === 'Paper 2' ? 'mc' : 'fill'),
+                                    firstStepLaw: e.firstStepLaw || ''
+                                })];
+                            }
+                            if (!Array.isArray(e.wrongIdxs) || e.wrongIdxs.length === 0) e.wrongIdxs = [0];
+                            e.wrongIdxs = e.wrongIdxs.filter(i => e.parts[i]);
+                            if (e.wrongIdxs.length === 0) e.wrongIdxs = [0];
+                            if (e.setId === undefined) e.setId = null;
+                            return e;
+                        }).filter(e => e.parts[0] && e.parts[0].answerStr);
+                    }
+                }
+            } catch (e) { console.log('loadErrorLog error', e); }
+        }
+
+        function saveErrorLog() {
+            const key = getErrorLogStorageKey();
+            if (!key) return;
+            try {
+                localStorage.setItem(key, JSON.stringify(errorLog));
+            } catch (e) { console.log('saveErrorLog error', e); }
+        }
+
+        function snapshotErrorPart(p) {
+            return {
+                partLabel: p.partLabel || '',
+                qHtml: p.qHtml || p.text || '',
+                marks: p.marks || 1,
+                answerStr: p.answerStr,
+                mcAnswerStr: p.mcAnswerStr || '',
+                options: Array.isArray(p.options) ? p.options : [],
+                acceptList: p.acceptList || null,
+                mode: p.mode || (p.paper === 'Paper 2' ? 'mc' : 'fill'),
+                firstStepLaw: p.firstStepLaw || ''
+            };
+        }
+
+        function errorLogRefund(level) {
+            return (MARKS[level] && MARKS[level].perHeart) || 1;
+        }
+
+        function errorLogWrongIdxs(entry) {
+            return (Array.isArray(entry.wrongIdxs) && entry.wrongIdxs.length) ? entry.wrongIdxs : [0];
+        }
+
+        function errorLogRemainingParts() {
+            return errorLog.reduce((n, e) => n + errorLogWrongIdxs(e).length, 0);
+        }
+
+        function errorLogCardMarks(entry) {
+            return errorLogWrongIdxs(entry).length * errorLogRefund(entry.level);
+        }
+
+        // A correct in-game retry clears the mistake from the Error Log Book.
+        // The lost heart/mark is NOT refunded; only an Error Log Book redo refunds.
+        function removeErrorLogPart(q, level, setParts) {
+            if (!q) return;
+            if (Array.isArray(setParts) && setParts.length > 0 && q.setId) {
+                const entry = errorLog.find(e => e.setId === q.setId && e.level === level);
+                if (!entry) return;
+                const pi = (q.partIdx !== undefined && q.partIdx !== null) ? q.partIdx : 0;
+                entry.wrongIdxs = errorLogWrongIdxs(entry).filter(i => i !== pi);
+                if (entry.wrongIdxs.length === 0) {
+                    errorLog = errorLog.filter(e => e.id !== entry.id);
+                }
+                saveErrorLog();
+                return;
+            }
+            const part = snapshotErrorPart(q);
+            const key = level + '|' + part.qHtml + '|' + part.answerStr;
+            const before = errorLog.length;
+            errorLog = errorLog.filter(e => {
+                const p0 = e.parts && e.parts[0];
+                return !(p0 && (e.level + '|' + p0.qHtml + '|' + p0.answerStr) === key);
+            });
+            if (errorLog.length !== before) saveErrorLog();
+        }
+
+        function recordErrorLog(q, level, setParts) {
+            if (!q || !q.answerStr) return;
+
+            // Multi-part set → one card for the full question; merge wrong parts by setId.
+            if (Array.isArray(setParts) && setParts.length > 0 && q.setId) {
+                let entry = errorLog.find(e => e.setId && e.setId === q.setId && e.level === level);
+                if (!entry) {
+                    entry = {
+                        id: 'e' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                        level: level,
+                        setId: q.setId,
+                        src: q.src || '',
+                        paper: q.paper || 'Paper 1',
+                        parts: setParts.map(snapshotErrorPart),
+                        wrongIdxs: []
+                    };
+                    errorLog.push(entry);
+                }
+                const pi = (q.partIdx !== undefined && q.partIdx !== null) ? q.partIdx : 0;
+                if (entry.parts[pi] && entry.wrongIdxs.indexOf(pi) === -1) {
+                    entry.wrongIdxs.push(pi);
+                    entry.wrongIdxs.sort((a, b) => a - b);
+                }
+                saveErrorLog();
+                return;
+            }
+
+            // Single question → one-part card.
+            const part = snapshotErrorPart(q);
+            const key = level + '|' + part.qHtml + '|' + part.answerStr;
+            const exists = errorLog.some(e => {
+                const p0 = e.parts && e.parts[0];
+                return p0 && (e.level + '|' + p0.qHtml + '|' + p0.answerStr) === key;
+            });
+            if (exists) return;
+            errorLog.push({
+                id: 'e' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                level: level,
+                setId: null,
+                src: q.src || '',
+                paper: q.paper || 'Paper 1',
+                parts: [part],
+                wrongIdxs: [0]
+            });
+            saveErrorLog();
+        }
+
+        function renderErrorLogBook() {
+            const list = document.getElementById('error-log-list');
+            const toggle = document.getElementById('error-log-toggle');
+            const empty = document.getElementById('error-log-empty');
+            if (!list) return;
+
+            const countEl = document.getElementById('error-log-count');
+            const recoverable = errorLog.reduce((sum, e) => sum + errorLogCardMarks(e), 0);
+            if (countEl) {
+                countEl.textContent = errorLog.length === 0
+                    ? 'Empty'
+                    : `${errorLog.length} question${errorLog.length > 1 ? 's' : ''} · ${recoverable} mark${recoverable > 1 ? 's' : ''} recoverable`;
+            }
+
+            if (errorLog.length === 0) {
+                errorLogExpanded = false;
+                list.innerHTML = '';
+                list.classList.add('hidden');
+                if (toggle) toggle.classList.add('hidden');
+                if (empty) empty.classList.remove('hidden');
+                return;
+            }
+
+            if (empty) empty.classList.add('hidden');
+            if (toggle) {
+                toggle.classList.remove('hidden');
+                toggle.textContent = (errorLogExpanded ? '🙈 Hide Questions (' : '👁 Unhide Questions (') + errorLog.length + ')';
+            }
+
+            list.innerHTML = errorLog.map(e => {
+                const wrong = errorLogWrongIdxs(e);
+                const wrongLabels = wrong.map(i => (e.parts[i] && e.parts[i].partLabel) ? e.parts[i].partLabel : '').filter(Boolean).join(', ');
+                const paperTag = (e.paper === 'Paper 2') ? 'P2' : ((e.paper === 'Paper 1') ? 'P1' : 'TSA');
+                const tag = 'L' + e.level + ' · ' + paperTag + (wrongLabels ? ' ' + wrongLabels : '');
+                const cardMarks = errorLogCardMarks(e);
+                const partsHtml = e.parts.map((p, i) => {
+                    const missed = wrong.indexOf(i) !== -1;
+                    return `<div class="rounded-lg border ${missed ? 'border-red-500/50 bg-red-500/5' : 'border-slate-700/60'} px-2 py-1 mb-1 last:mb-0">
+                        ${p.partLabel ? `<span class="font-bold text-amber-300">${p.partLabel}</span> ` : ''}${styleVars(p.qHtml)}
+                    </div>`;
+                }).join('');
+                return `<div class="flex items-start gap-3 bg-slate-800/80 border border-slate-700 rounded-xl p-3">
+                    <span class="shrink-0 text-xs font-bold text-red-300 bg-red-500/15 border border-red-500/30 rounded-lg px-2 py-1 mt-0.5 whitespace-nowrap">${tag}</span>
+                    <div class="flex-1 min-w-0 text-sm text-slate-200 leading-relaxed qtext text-left">${partsHtml}</div>
+                    <div class="shrink-0 flex flex-col items-end gap-1">
+                        <span class="text-[11px] text-amber-300 font-bold whitespace-nowrap">+${cardMarks} mark${cardMarks > 1 ? 's' : ''}</span>
+                        <button onclick="openErrorLogEntry('${e.id}')" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95">Redo</button>
+                    </div>
+                </div>`;
+            }).join('');
+            list.classList.toggle('hidden', !errorLogExpanded);
+            if (errorLogExpanded) mjTypeset([list]);
+        }
+
+        function toggleErrorLogList() {
+            errorLogExpanded = !errorLogExpanded;
+            const list = document.getElementById('error-log-list');
+            const toggle = document.getElementById('error-log-toggle');
+            if (list) list.classList.toggle('hidden', !errorLogExpanded);
+            if (toggle) toggle.textContent = (errorLogExpanded ? '🙈 Hide Questions (' : '👁 Unhide Questions (') + errorLog.length + ')';
+            if (errorLogExpanded && list) mjTypeset([list]);
+        }
+
+        function openErrorLogEntry(id) {
+            const entry = errorLog.find(e => e.id === id);
+            if (!entry) return;
+            const targetIdx = errorLogWrongIdxs(entry)[0];
+            const part = entry.parts[targetIdx];
+            if (!part) return;
+            const remaining = errorLogRemainingParts();
+
+            const modal = document.getElementById('error-log-modal');
+            if (modal && modal.classList.contains('hidden')) errorLogSessionRecovered = 0;
+            activeErrorEntry = entry;
+            activeErrorPartIdx = targetIdx;
+            activeErrorPart = part;
+
+            document.getElementById('error-log-level').textContent =
+                'Level ' + entry.level + ' · ' + (entry.paper || 'TSA') +
+                (part.partLabel ? ' · Part ' + part.partLabel : '') +
+                (entry.src ? ' · ' + entry.src : '') +
+                ' · ' + remaining + ' part' + (remaining > 1 ? 's' : '') + ' left';
+            document.getElementById('error-log-reward').textContent = '+' + errorLogRefund(entry.level) + ' mark';
+
+            // Show the full question; highlight the part being redone.
+            document.getElementById('error-log-question').innerHTML = entry.parts.map((p, i) => {
+                const isTarget = i === targetIdx;
+                return `<div class="rounded-lg border ${isTarget ? 'border-amber-500/60 bg-amber-500/5' : 'border-slate-700/60'} px-3 py-2 mb-2 last:mb-0 text-left">
+                    ${p.partLabel ? `<span class="font-bold text-amber-300">${p.partLabel}</span> ` : ''}${styleVars(p.qHtml)}
+                </div>`;
+            }).join('');
+
+            const mcArea = document.getElementById('error-log-mc-options');
+            const fillArea = document.getElementById('error-log-fill-area');
+            const hint = document.getElementById('error-log-mode-hint');
+            const redoLabel = part.partLabel ? 'Redo Part ' + part.partLabel + ' · ' : '';
+
+            if (part.mode === 'mc') {
+                mcArea.classList.remove('hidden');
+                fillArea.classList.add('hidden');
+                hint.textContent = redoLabel + 'Multiple Choice';
+                mcArea.innerHTML = '';
+                part.options.forEach((o, idx) => {
+                    mcArea.innerHTML += `<button onclick="submitErrorLogMC(${idx})" class="option-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl p-3 text-lg transition-all shadow-md active:scale-95 min-h-[56px] flex items-center justify-center"><div class="w-full text-center">${o}</div></button>`;
+                });
+            } else {
+                mcArea.classList.add('hidden');
+                mcArea.innerHTML = '';
+                fillArea.classList.remove('hidden');
+                hint.textContent = redoLabel + 'Fill-in';
+                document.getElementById('error-log-input').value = '';
+                document.getElementById('error-log-preview').textContent = 'Empty';
+                const helpers = document.getElementById('error-log-helpers');
+                helpers.innerHTML = '';
+                ['1','2','3','4','5','6','7','8','9','0','/','.','-'].forEach(ch => {
+                    helpers.innerHTML += `<button onclick="insertErrorLogChar('${ch}')" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white font-mono text-sm transition">${ch}</button>`;
+                });
+            }
+
+            if (modal) modal.classList.remove('hidden');
+            mjTypeset([modal]);
+        }
+
+        function closeErrorLog() {
+            document.getElementById('error-log-modal').classList.add('hidden');
+            activeErrorEntry = null;
+            activeErrorPart = null;
+            activeErrorPartIdx = 0;
+        }
+
+        function insertErrorLogChar(ch) {
+            const f = document.getElementById('error-log-input');
+            const start = f.selectionStart ?? f.value.length;
+            const end = f.selectionEnd ?? f.value.length;
+            f.value = f.value.substring(0, start) + ch + f.value.substring(end, f.value.length);
+            const pos = start + ch.length;
+            f.setSelectionRange(pos, pos);
+            f.focus();
+            updateErrorLogPreview();
+        }
+
+        function updateErrorLogPreview() {
+            const input = document.getElementById('error-log-input');
+            const box = document.getElementById('error-log-preview');
+            if (!input || !box) return;
+            renderPreviewInto(box, input.value);
+        }
+
+        function submitErrorLogMC(btnIdx) {
+            const part = activeErrorPart;
+            if (!part) return;
+            finishErrorLogAttempt(part, part.options[btnIdx] === '$ ' + part.mcAnswerStr + ' $');
+        }
+
+        function submitErrorLogFill() {
+            const part = activeErrorPart;
+            if (!part) return;
+            const rawInput = document.getElementById('error-log-input').value;
+            if (!rawInput.trim()) {
+                showToast("Please enter an answer.", "info");
+                return;
+            }
+            const cleanInput = rawInput.toLowerCase().replace(/\*/g, '');
+            finishErrorLogAttempt(part, checkFillAnswer(cleanInput, part));
+        }
+
+        function finishErrorLogAttempt(part, isCorrect) {
+            if (!isCorrect) {
+                const panel = document.getElementById('error-log-modal').firstElementChild;
+                if (panel) {
+                    panel.classList.remove('shake');
+                    void panel.offsetWidth;
+                    panel.classList.add('shake');
+                    setTimeout(() => panel.classList.remove('shake'), 400);
+                }
+                showToast("Not quite — try again. The question stays in your Error Log Book.", "error");
+                return;
+            }
+
+            const entry = activeErrorEntry;
+            if (!entry) return;
+            const entryIdx = errorLog.findIndex(e => e.id === entry.id);
+            if (entryIdx === -1) return;
+
+            const refund = errorLogRefund(entry.level);
+            scoreTotals['level' + entry.level] = (scoreTotals['level' + entry.level] || 0) + refund;
+            entry.wrongIdxs = errorLogWrongIdxs(entry).filter(i => i !== activeErrorPartIdx);
+            if (entry.wrongIdxs.length === 0) errorLog.splice(entryIdx, 1);
+            saveScores();
+            saveErrorLog();
+            updatePassportUI();
+            errorLogSessionRecovered += refund;
+
+            if (errorLogRemainingParts() === 0) {
+                showToast('All error questions cleared! +' + errorLogSessionRecovered + ' mark' + (errorLogSessionRecovered > 1 ? 's' : '') + ' recovered. 🎉', "success");
+                closeErrorLog();
+                return;
+            }
+
+            showToast('Correct! +' + refund + ' mark. Next part…', "success");
+            setTimeout(() => {
+                if (!activeErrorEntry) return;
+                const stillThere = errorLog.find(e => e.id === entry.id);
+                const next = stillThere || errorLog[0];
+                if (next) openErrorLogEntry(next.id);
+            }, 550);
+        }
+
+        function resolveErrorLogRedo(id, isCorrect) {
+            const entry = errorLog.find(e => e.id === id);
+            if (!entry || !isCorrect) return false;
+            const refund = errorLogRefund(entry.level);
+            scoreTotals['level' + entry.level] = (scoreTotals['level' + entry.level] || 0) + refund;
+            entry.wrongIdxs = errorLogWrongIdxs(entry).slice(1);
+            if (entry.wrongIdxs.length === 0) errorLog = errorLog.filter(e => e.id !== id);
+            saveScores();
+            saveErrorLog();
+            updatePassportUI();
+            return true;
         }
 
         function winGame() {
@@ -2108,7 +2506,9 @@
                     aKey = parts.map(p => p.answerStr).join('|');
                     tries++;
                 } while ((usedTexts.has(tKey) || usedOpts.has(oKey) || usedAns.has(aKey)) && tries < 100);
+                const setId = 'set_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
                 parts.forEach((part, pi) => {
+                    part.setId = setId;
                     part.setNo = currentSetIndex + 1;
                     part.partIdx = pi;
                     part.partLabel = ['(a)', '(b)', '(c)'][pi];
@@ -2244,7 +2644,7 @@
             if(window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise().catch(() => {});
         }
 
-        // --- REFLECTION & SUBMISSION LOGIC ---
+        // --- SUBMISSION LOGIC ---
 
         function submitToTeacher() {
             if (!studentProfile) return;

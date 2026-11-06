@@ -485,7 +485,7 @@
         const GOOGLE_SCRIPT_URL =
             'https://script.google.com/macros/s/AKfycbybFSAODKwifwclDTUhaKiPjC20eIaUGdiBBttHXaieZP_ydlQBQxvLMjTl9PSjums/exec';
 
-        const APP_VERSION = '5';
+        const APP_VERSION = '6';
         (function watchAppVersion() {
             const file = (location.pathname.split('/').pop() || 'index.html').split('?')[0];
             const check = () => {
@@ -725,71 +725,94 @@
                 let text = '', answerStr = '', mcTex = '', optsTex = [], law = 'freq_table', src = '', paper = 'TSA';
 
                 if (t === 0) {
-                    // TSA 3B12 Q178/Q179 — empirical probability from a frequency table
-                    const scene = this.rand(0, 1);
-                    let who, intro, verb, cats, phrases, ti;
-                    if (scene === 0) {
-                        who = ['Chris', 'Wilson', 'Kelvin'][this.rand(0, 2)];
-                        intro = who + ' draws a character from a computer game';
-                        verb = 'draws';
-                        cats = ['Animal', 'Alien', 'Human', 'Other'];
-                        phrases = ['an animal', 'an alien', 'a human'];
-                        ti = this.rand(0, 2);
+                    // TSA 3B12 Q178/Q179/Q184/Q185 — empirical probability from a frequency table
+                    const scene = this.rand(0, 3);
+                    if (scene === 2) {
+                        // Q184 — fruits (fixed)
+                        text = 'The following table shows the amount of different fruits in a supermarket.' +
+                            this.table(['Apple', 'Orange', 'Pear'], [120, 160, 170], 'Fruit', 'Amount') +
+                            'According to the table above, find the relative frequency of pear in the supermarket.';
+                        answerStr = this.fstr(170, 450);
+                        mcTex = this.ftex(170, 450);
+                        optsTex = this.fracOpts(170, 450, [[120, 450], [160, 450], [280, 450]]);
+                        src = 'TSA 3B12 2025 Q184';
+                    } else if (scene === 3) {
+                        // Q185 — movies (fixed)
+                        text = 'The following table shows the number of movies that 30 respondents watched during the summer holiday.' +
+                            this.table(['0', '1', '2', '3', '4 or more'], [3, 10, 12, 4, 1], 'Number of movies', 'Frequency') +
+                            'According to the table above, find the relative frequency of the respondents who did not watch any movies during the summer holiday.';
+                        answerStr = this.fstr(3, 30);
+                        mcTex = this.ftex(3, 30);
+                        optsTex = this.fracOpts(3, 30, [[10, 30], [12, 30], [4, 30]]);
+                        src = 'TSA 3B12 2025 Q185';
                     } else {
-                        who = ['Ryan', 'Betty', 'Mary'][this.rand(0, 2)];
-                        intro = who + ' plays songs with a music player';
-                        verb = 'plays';
-                        cats = ['Pop Song', 'Rhyme', 'Nursery Rhyme', 'Symphony', 'Cantonese Opera'];
-                        phrases = ['a pop song', 'a rhyme', 'a nursery rhyme', 'a symphony', 'a Cantonese opera'];
-                        ti = this.rand(0, 4);
+                        let who, intro, verb, cats, phrases, ti;
+                        if (scene === 0) {
+                            who = ['Chris', 'Wilson', 'Kelvin'][this.rand(0, 2)];
+                            intro = who + ' draws a character from a computer game';
+                            verb = 'draws';
+                            cats = ['Animal', 'Alien', 'Human', 'Other'];
+                            phrases = ['an animal', 'an alien', 'a human'];
+                            ti = this.rand(0, 2);
+                        } else {
+                            who = ['Ryan', 'Betty', 'Mary'][this.rand(0, 2)];
+                            intro = who + ' plays songs with a music player';
+                            verb = 'plays';
+                            cats = ['Pop Song', 'Rhyme', 'Nursery Rhyme', 'Symphony', 'Cantonese Opera'];
+                            phrases = ['a pop song', 'a rhyme', 'a nursery rhyme', 'a symphony', 'a Cantonese opera'];
+                            ti = this.rand(0, 4);
+                        }
+                        const counts = [];
+                        const pool = [3, 4, 5, 8, 10, 12, 15, 20, 25, 30, 40];
+                        while (counts.length < cats.length) {
+                            const c = pool[this.rand(0, pool.length - 1)];
+                            if (counts.indexOf(c) === -1) counts.push(c);
+                        }
+                        const T = counts.reduce((a, b) => a + b, 0);
+                        text = intro + '. The table below shows the frequencies of the outcomes.' + this.table(cats, counts) +
+                            `Find the empirical probability that ${who} ${verb} ${phrases[ti]}${scene === 0 ? ' from the game' : ' with the music player'}.`;
+                        answerStr = this.fstr(counts[ti], T);
+                        mcTex = this.ftex(counts[ti], T);
+                        const cands = [];
+                        for (let i = 0; i < counts.length; i++) if (i !== ti) cands.push([counts[i], T]);
+                        optsTex = this.fracOpts(counts[ti], T, cands);
+                        src = scene === 0 ? 'TSA 3B12 2021 Q178' : 'TSA 3B12 2022 Q179';
                     }
-                    const counts = [];
-                    const pool = [3, 4, 5, 8, 10, 12, 15, 20, 25, 30, 40];
-                    while (counts.length < cats.length) {
-                        const c = pool[this.rand(0, pool.length - 1)];
-                        if (counts.indexOf(c) === -1) counts.push(c);
-                    }
-                    const T = counts.reduce((a, b) => a + b, 0);
-                    text = intro + '. The table below shows the frequencies of the outcomes.' + this.table(cats, counts) +
-                        `Find the empirical probability that ${who} ${verb} ${phrases[ti]}${scene === 0 ? ' from the game' : ' with the music player'}.`;
-                    answerStr = this.fstr(counts[ti], T);
-                    mcTex = this.ftex(counts[ti], T);
-                    const cands = [];
-                    for (let i = 0; i < counts.length; i++) if (i !== ti) cands.push([counts[i], T]);
-                    optsTex = this.fracOpts(counts[ti], T, cands);
-                    src = scene === 0 ? 'TSA 3B12 2021 Q178' : 'TSA 3B12 2022 Q179';
                 } else if (t === 1) {
                     // TSA 3B12 Q180/Q183 — relative frequency of a composite event
-                    const variant = this.rand(0, 1);
-                    if (variant === 0) {
+                    const variant = this.rand(0, 3);
+                    if (variant === 0 || variant === 2) {
                         const outcomes = [1, 2, 3, 4, 5, 6];
                         const counts = [];
                         for (let i = 0; i < 6; i++) counts.push(this.rand(5, 30));
                         const T = counts.reduce((a, b) => a + b, 0);
-                        const fav = counts[1] + counts[3] + counts[5];
+                        const even = variant === 0;
+                        const fav = even ? counts[1] + counts[3] + counts[5] : counts[0] + counts[2] + counts[4];
+                        const opp = even ? [counts[0], counts[2], counts[4]] : [counts[1], counts[3], counts[5]];
                         text = `Wilson throws a dice ${T} times. The outcomes are shown as follows.` + this.table(outcomes, counts) +
-                            `Find the relative frequency of Wilson getting an even number.`;
+                            `Find the relative frequency of Wilson getting ${even ? 'an even number' : 'an odd number'}.`;
                         answerStr = this.fstr(fav, T);
                         mcTex = this.ftex(fav, T);
-                        optsTex = this.fracOpts(fav, T, [[counts[0], T], [counts[2], T], [counts[4], T]]);
+                        optsTex = this.fracOpts(fav, T, [[opp[0], T], [opp[1], T], [opp[2], T]]);
                         src = 'TSA 3B12 2023 Q180';
                     } else {
                         const outcomes = ['No coins face up', 'Only 1 coin faces up', 'Only 2 coins face up', '3 coins face up'];
                         const counts = [];
                         for (let i = 0; i < 4; i++) counts.push(this.rand(5, 45));
                         const T = counts.reduce((a, b) => a + b, 0);
-                        const fav = counts[2];
+                        const atLeast = variant === 3;
+                        const fav = atLeast ? counts[2] + counts[3] : counts[2];
                         text = `Wilson throws three coins at the same time. He conducted this experiment ${T} times and the outcomes are shown as follows.` + this.table(outcomes, counts) +
-                            `Find the relative frequency of Wilson having only 2 coins facing up.`;
+                            `Find the relative frequency of Wilson having ${atLeast ? 'at least 2 coins facing up' : 'only 2 coins facing up'}.`;
                         answerStr = this.fstr(fav, T);
                         mcTex = this.ftex(fav, T);
-                        optsTex = this.fracOpts(fav, T, [[counts[0], T], [counts[1], T], [counts[3], T]]);
+                        optsTex = this.fracOpts(fav, T, atLeast ? [[counts[2], T], [counts[0], T], [counts[1], T]] : [[counts[0], T], [counts[1], T], [counts[3], T]]);
                         src = 'TSA 3B12 2024 Q183';
                     }
                 } else if (t === 2) {
                     // TSA 3B12 Q181/Q182 — relative frequency with one large frequency
-                    const variant = this.rand(0, 1);
-                    const x = this.rand(0, 2), y = this.rand(1, 3), N = 500 * this.rand(1, 4);
+                    const variant = this.rand(0, 3);
+                    const x = this.rand(1, 2), y = this.rand(1, 3), N = 500 * this.rand(1, 4);
                     const T = x + N + y;
                     if (variant === 0) {
                         text = `The following table shows the service status of trains and their corresponding frequency at a station yesterday.` +
@@ -799,7 +822,15 @@
                         mcTex = this.ftex(y, T);
                         optsTex = this.fracOpts(y, T, [[x, T], [N, T], [x + y, T]]);
                         src = 'TSA 3B12 2023 Q181';
-                    } else {
+                    } else if (variant === 2) {
+                        text = `The following table shows the service status of trains and their corresponding frequency at a station yesterday.` +
+                            this.table(['Left ahead of time', 'Left on time', 'Left behind schedule'], [x, N, y], 'Service status') +
+                            `Find the relative frequency of the service status "left ahead of time" at the station yesterday.`;
+                        answerStr = this.fstr(x, T);
+                        mcTex = this.ftex(x, T);
+                        optsTex = this.fracOpts(x, T, [[y, T], [N, T], [x + y, T]]);
+                        src = 'TSA 3B12 2023 Q181';
+                    } else if (variant === 1) {
                         text = `The following table shows the personal vaccination history and the corresponding frequency of people who reserved a booking at a vaccination clinic yesterday.` +
                             this.table(['Never vaccinated', 'Received 1 to 3 doses of vaccine', 'Received more than 3 doses of vaccine'], [x, N, y], 'Vaccination history') +
                             `According to the table above, find the relative frequency of the people who received 1 dose or more of vaccine.`;
@@ -807,21 +838,41 @@
                         mcTex = this.ftex(N + y, T);
                         optsTex = this.fracOpts(N + y, T, [[x, T], [N, T], [y, T]]);
                         src = 'TSA 3B12 2024 Q182';
+                    } else {
+                        text = `The following table shows the personal vaccination history and the corresponding frequency of people who reserved a booking at a vaccination clinic yesterday.` +
+                            this.table(['Never vaccinated', 'Received 1 to 3 doses of vaccine', 'Received more than 3 doses of vaccine'], [x, N, y], 'Vaccination history') +
+                            `According to the table above, find the relative frequency of the people who received more than 3 doses of vaccine.`;
+                        answerStr = this.fstr(y, T);
+                        mcTex = this.ftex(y, T);
+                        optsTex = this.fracOpts(y, T, [[x, T], [N, T], [N + y, T]]);
+                        src = 'TSA 3B12 2024 Q182';
                     }
                 } else if (t === 3) {
-                    // TSA 3B12 Q186/Q188 — outcome listing: one sport + one music
-                    const m = this.rand(2, 3), n = this.rand(3, 5);
-                    const sports = ['long-distance running', 'basketball', 'swimming'].slice(0, m);
-                    const music = ['choir', 'violin class', 'recorder class', 'drama club', 'arts club'].slice(0, n);
-                    const pickS = sports[this.rand(0, m - 1)], pickM = music[this.rand(0, n - 1)];
-                    const who = ['Alice', 'Kelvin', 'Betty'][this.rand(0, 2)];
-                    text = `All Secondary One students at a school must join one sport activity and one music activity. Students can choose one of ${m} sport activities and one of ${n} music activities. ` +
-                        `If ${who} is a Secondary One student of the school, ${who} chooses one sport activity and one music activity randomly. Find the probability that ${who} chooses ${pickS} and ${pickM}.`;
-                    answerStr = this.fstr(1, m * n);
-                    mcTex = this.ftex(1, m * n);
-                    optsTex = this.fracOpts(1, m * n, [[1, m], [1, n], [(m - 1) * (n - 1), m * n]]);
-                    law = 'list_outcomes';
-                    src = 'TSA 3B12 2021 Q186 / 2023 Q188';
+                    // TSA 3B12 Q186/Q188 — outcome listing: one combination
+                    const variant = this.rand(0, 1);
+                    if (variant === 1) {
+                        // Q188 shaved ice (fixed)
+                        text = `A dessert shop offers three flavours of shaved ice including watermelon (W), strawberry (S) and chocolate (C). Each portion of shaved ice can have one topping of nuts (N), marshmallows (M) or biscuit (B). ` +
+                            `If Kelvin chooses a shaved ice flavour and a topping randomly, find the probability that he chooses watermelon shaved ice with nuts.`;
+                        answerStr = this.fstr(1, 9);
+                        mcTex = this.ftex(1, 9);
+                        optsTex = this.fracOpts(1, 9, [[1, 3], [1, 6], [2, 9]]);
+                        law = 'list_outcomes';
+                        src = 'TSA 3B12 2023 Q188';
+                    } else {
+                        const m = this.rand(2, 3), n = this.rand(3, 5);
+                        const sports = ['long-distance running', 'basketball', 'swimming'].slice(0, m);
+                        const music = ['choir', 'violin class', 'recorder class', 'drama club', 'arts club'].slice(0, n);
+                        const pickS = sports[this.rand(0, m - 1)], pickM = music[this.rand(0, n - 1)];
+                        const who = ['Alice', 'Kelvin', 'Betty'][this.rand(0, 2)];
+                        text = `All Secondary One students at a school must join one sport activity and one music activity. Students can choose one of ${m} sport activities and one of ${n} music activities. ` +
+                            `If ${who} is a Secondary One student of the school, ${who} chooses one sport activity and one music activity randomly. Find the probability that ${who} chooses ${pickS} and ${pickM}.`;
+                        answerStr = this.fstr(1, m * n);
+                        mcTex = this.ftex(1, m * n);
+                        optsTex = this.fracOpts(1, m * n, [[1, m], [1, n], [(m - 1) * (n - 1), m * n]]);
+                        law = 'list_outcomes';
+                        src = 'TSA 3B12 2021 Q186 / 2023 Q188';
+                    }
                 } else if (t === 4) {
                     // TSA 3B12 Q187 — two players show one of k gestures → P(tie) = 1/k
                     const k = this.rand(2, 9);
@@ -855,75 +906,162 @@
                     law = 'list_outcomes';
                     src = 'TSA 3B12 2024 Q189';
                 } else if (t === 6) {
-                    // TSA 3B12 Q190 — two-digit number from 3 digits → P(multiple of 4)
-                    const combos = [[1, 4, 8], [2, 4, 8], [1, 2, 8], [2, 4, 6], [1, 4, 9], [4, 8, 9], [3, 4, 8], [4, 8, 5], [4, 6, 8], [2, 3, 6], [1, 2, 6]];
-                    const d = combos[this.rand(0, combos.length - 1)];
-                    let c = 0;
-                    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) {
-                        if ((d[a] * 10 + d[b]) % 4 === 0) c++;
+                    // TSA 3B12 Q190 + J19 Q668/Q680 — digit divisibility
+                    const variant = this.rand(0, 2);
+                    if (variant === 1) {
+                        // Q668 — 9★◆ divisible by 5 (fixed)
+                        text = `9★◆ is a 3-digit number, where ★ and ◆ are integers from 0 to 9 inclusive. Find the probability that the 3-digit number is divisible by 5.`;
+                        answerStr = this.fstr(1, 5);
+                        mcTex = this.ftex(1, 5);
+                        optsTex = this.fracOpts(1, 5, [[7, 33], [20, 99], [19, 100]]);
+                        law = 'list_outcomes';
+                        src = 'S3 Probability J19 (12 P2 Q27)';
+                    } else if (variant === 2) {
+                        // Q680 — 5♦2 divisible by 7 (fixed)
+                        text = `5♦2 is a 3-digit number, where ♦ is an integer from 0 to 9 inclusive. Find the probability that the 3-digit number is divisible by 7.`;
+                        answerStr = this.fstr(1, 10);
+                        mcTex = this.ftex(1, 10);
+                        optsTex = this.fracOpts(1, 10, [[1, 5], [1, 7], [1, 9]]);
+                        law = 'list_outcomes';
+                        src = 'S3 Probability J19 (22 P2 Q28)';
+                    } else {
+                        const combos = [[1, 4, 8], [2, 4, 8], [1, 2, 8], [2, 4, 6], [1, 4, 9], [4, 8, 9], [3, 4, 8], [4, 8, 5], [4, 6, 8], [2, 3, 6], [1, 2, 6]];
+                        const d = combos[this.rand(0, combos.length - 1)];
+                        let c = 0;
+                        for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) {
+                            if ((d[a] * 10 + d[b]) % 4 === 0) c++;
+                        }
+                        text = `A two-digit number is formed by the digits ${d[0]}, ${d[1]} and ${d[2]} at random. The digits can be used again. For example: ${d[0]}${d[0]}, ${d[0]}${d[1]}. Find the probability that the two-digit number formed is a multiple of 4.`;
+                        answerStr = this.fstr(c, 9);
+                        mcTex = this.ftex(c, 9);
+                        const cands = [];
+                        for (const v of [c + 1, c - 1, c + 2, c + 3]) {
+                            if (v >= 1 && v <= 8) cands.push([v, 9]);
+                        }
+                        optsTex = this.fracOpts(c, 9, cands);
+                        law = 'list_outcomes';
+                        src = 'TSA 3B12 2025 Q190';
                     }
-                    text = `A two-digit number is formed by the digits ${d[0]}, ${d[1]} and ${d[2]} at random. The digits can be used again. For example: ${d[0]}${d[0]}, ${d[0]}${d[1]}. Find the probability that the two-digit number formed is a multiple of 4.`;
-                    answerStr = this.fstr(c, 9);
-                    mcTex = this.ftex(c, 9);
-                    const cands = [];
-                    for (const v of [c + 1, c - 1, c + 2, c + 3]) {
-                        if (v >= 1 && v <= 8) cands.push([v, 9]);
-                    }
-                    optsTex = this.fracOpts(c, 9, cands);
-                    law = 'list_outcomes';
-                    src = 'TSA 3B12 2025 Q190';
                 } else if (t === 7) {
-                    // J19 Q295 (18 P1 Q4) — P(red) = fraction → find n (Paper 2 · MC)
-                    const scen = [[20, 8, 5], [25, 10, 6], [20, 5, 6], [20, 6, 5], [30, 9, 6], [24, 9, 7]][this.rand(0, 5)];
-                    const total = scen[0], r = scen[1], b = scen[2];
-                    const n = total - r - b;
-                    const pq = this.red(r, total);
+                    // J19 Q295 (18 P1 Q4) + Q671 (14 P2 Q27) — P = fraction → find unknown (Paper 2 · MC)
                     paper = 'Paper 2';
-                    text = `A box contains n white balls, ${b} black balls and ${r} red balls. If a ball is randomly drawn from the box, then the probability of drawing a red ball is ${pq[0]}/${pq[1]}. Find the value of n.`;
-                    answerStr = String(n);
-                    mcTex = String(n);
-                    optsTex = this.numOpts(n, [n + 1, n - 1, n + 2, n - 2]);
-                    law = 'fraction_count';
-                    src = 'S3 Probability J19 (18 P1 Q4)';
+                    const variant = this.rand(0, 1);
+                    if (variant === 1) {
+                        // Q671 — m yellow, 20 black, P(yellow) = 1/m → m = 5 (fixed)
+                        text = `A box contains m yellow balls and 20 black balls. If a ball is randomly drawn from the box, then the probability of drawing a yellow ball is 1/m. Find the value of m.`;
+                        answerStr = '5';
+                        mcTex = '5';
+                        optsTex = this.numOpts(5, [4, 15, 25]);
+                        law = 'fraction_count';
+                        src = 'S3 Probability J19 (14 P2 Q27)';
+                    } else {
+                        const scen = [[20, 8, 5], [25, 10, 6], [20, 5, 6], [20, 6, 5], [30, 9, 6], [24, 9, 7]][this.rand(0, 5)];
+                        const total = scen[0], r = scen[1], b = scen[2];
+                        const n = total - r - b;
+                        const pq = this.red(r, total);
+                        text = `A box contains n white balls, ${b} black balls and ${r} red balls. If a ball is randomly drawn from the box, then the probability of drawing a red ball is ${pq[0]}/${pq[1]}. Find the value of n.`;
+                        answerStr = String(n);
+                        mcTex = String(n);
+                        optsTex = this.numOpts(n, [n + 1, n - 1, n + 2, n - 2]);
+                        law = 'fraction_count';
+                        src = 'S3 Probability J19 (18 P1 Q4)';
+                    }
                 } else if (t === 8) {
-                    // J19 Q292 (15 P1 Q3) — two bags of cards → P(sum < k) (Paper 2 · MC)
-                    const combos = [
-                        [[1, 3, 5, 7], [2, 4, 6, 8, 10], 9],
-                        [[1, 3, 5], [2, 4, 6], 7],
-                        [[2, 4, 6], [1, 3, 5], 8],
-                        [[1, 2, 3], [4, 5, 6], 7],
-                        [[1, 2, 3, 4], [2, 3, 4, 5], 7],
-                        [[2, 4, 6, 8], [1, 3, 5, 7], 9],
-                        [[1, 3, 5, 7, 9], [2, 4, 6, 8], 10],
-                        [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 7]
-                    ];
-                    const scen = combos[this.rand(0, combos.length - 1)];
-                    const A = scen[0], B = scen[1], lim = scen[2];
-                    let c = 0;
-                    for (const a of A) for (const b of B) if (a + b < lim) c++;
-                    const den = A.length * B.length;
+                    // J19 Q292 (15 P1 Q3) + Q667/670/674/677/678/679/681/682 — independent draws (Paper 2 · MC)
                     paper = 'Paper 2';
-                    text = `Bag A contains cards numbered ${A.join(', ')} while bag B contains cards numbered ${B.join(', ')}. ` +
-                        `If one card is randomly drawn from each bag, find the probability that the sum of the two numbers drawn is less than ${lim}.`;
+                    const variant = this.rand(0, 15);
+                    let c, den;
+                    if (variant < 8) {
+                        const combos = [
+                            [[1, 3, 5, 7], [2, 4, 6, 8, 10], 9],
+                            [[1, 3, 5], [2, 4, 6], 7],
+                            [[2, 4, 6], [1, 3, 5], 8],
+                            [[1, 2, 3], [4, 5, 6], 7],
+                            [[1, 2, 3, 4], [2, 3, 4, 5], 7],
+                            [[2, 4, 6, 8], [1, 3, 5, 7], 9],
+                            [[1, 3, 5, 7, 9], [2, 4, 6, 8], 10],
+                            [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 7]
+                        ];
+                        const scen = combos[variant];
+                        const A = scen[0], B = scen[1], lim = scen[2];
+                        c = 0;
+                        for (const a of A) for (const b of B) if (a + b < lim) c++;
+                        den = A.length * B.length;
+                        text = `Bag A contains cards numbered ${A.join(', ')} while bag B contains cards numbered ${B.join(', ')}. ` +
+                            `If one card is randomly drawn from each bag, find the probability that the sum of the two numbers drawn is less than ${lim}.`;
+                        const cands = [];
+                        for (const v of [c + 1, c - 1, den - c]) {
+                            if (v > 0 && v < den) cands.push([v, den]);
+                        }
+                        optsTex = this.fracOpts(c, den, cands);
+                        src = 'S3 Probability J19 (15 P1 Q3)';
+                    } else {
+                        const sc = [
+                            { cards: [2, 3, 5, 7], pred: (x, y) => (x + y) % 4 === 0,
+                              text: 'Two numbers are randomly drawn at the same time from four cards numbered 2, 3, 5 and 7 respectively. Find the probability that the sum of the numbers drawn is a multiple of 4.',
+                              cands: [[1, 4], [1, 6], [5, 16]], src: 'S3 Probability J19 (PP P2 Q28)' },
+                            { cards: [1, 2, 3, 4, 5, 6, 7], pred: (x, y) => (x * y) % 2 === 1,
+                              text: 'Two numbers are randomly drawn at the same time from seven cards numbered 1, 2, 3, 4, 5, 6 and 7 respectively. Find the probability that the product of the numbers drawn is an odd number.',
+                              cands: [[4, 7], [12, 49], [16, 49]], src: 'S3 Probability J19 (13 P2 Q26)' },
+                            { coins: [1, 2, 5, 10], k: 3, pred: (s) => s >= 13,
+                              text: 'Christine has one \\$1 coin, one \\$2 coin, one \\$5 coin and one \\$10 coin in her pocket. If Christine takes out three coins randomly from her pocket, find the probability that she gets at least \\$13.',
+                              cands: [[1, 2], [1, 4], [23, 24]], src: 'S3 Probability J19 (16 P2 Q28)' },
+                            { cards: [1, 1, 1, 2, 2, 3, 4], pred: (x, y) => x + y === 5,
+                              text: 'Two numbers are randomly drawn at the same time from seven cards numbered 1, 1, 1, 2, 2, 3 and 4 respectively. Find the probability that the sum of the numbers drawn is 5.',
+                              cands: [[5, 42], [5, 49], [10, 49]], src: 'S3 Probability J19 (18 P2 Q28)' },
+                            { cards: [1, 2, 3, 4, 5, 6, 7, 8, 9], pred: (x, y) => Math.abs(x - y) === 1,
+                              text: 'Two numbers are randomly drawn at the same time from nine balls numbered 1, 2, 3, 4, 5, 6, 7, 8 and 9 respectively. Find the probability that the two numbers drawn are consecutive integers.',
+                              cands: [[1, 2], [1, 4], [7, 9]], src: 'S3 Probability J19 (19 P2 Q28)' },
+                            { cards: [3, 5, 7, 9], pred: (x, y) => x * y > 35,
+                              text: 'Two numbers are randomly drawn at the same time from four cards numbered 3, 5, 7 and 9 respectively. Find the probability that the product of the numbers drawn is greater than 35.',
+                              cands: [[1, 2], [2, 3], [3, 8]], src: 'S3 Probability J19 (20 P2 Q28)' },
+                            { box1: [1, 2, 3, 4, 5], box2: [6, 7, 8, 9], pred: (x, y) => (x * y) % 4 === 0,
+                              text: 'A box contains five cards numbered 1, 2, 3, 4 and 5 respectively while another box contains four cards numbered 6, 7, 8 and 9 respectively. If a number is randomly drawn from each box, find the probability that the product of the two numbers drawn is divisible by 4.',
+                              cands: [[1, 5], [3, 10], [7, 20]], src: 'S3 Probability J19 (23 P2 Q28)' },
+                            { cards: [1, 2, 3, 4, 5, 6], pred: (x, y) => x * y >= 12,
+                              text: 'Two numbers are randomly drawn at the same time from six cards numbered 1, 2, 3, 4, 5 and 6 respectively. Find the probability that the product of the numbers drawn is not less than 12.',
+                              cands: [[1, 3], [2, 3], [8, 15]], src: 'S3 Probability J19 (24 P2 Q28)' }
+                        ][variant - 8];
+                        if (sc.box1) {
+                            c = 0;
+                            for (const a of sc.box1) for (const b of sc.box2) if (sc.pred(a, b)) c++;
+                            den = sc.box1.length * sc.box2.length;
+                        } else if (sc.coins) {
+                            c = 0;
+                            const cs = sc.coins;
+                            for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) for (let m = j + 1; m < cs.length; m++)
+                                if (sc.pred(cs[i] + cs[j] + cs[m])) c++;
+                            den = this.comb(cs.length, sc.k);
+                        } else {
+                            c = 0;
+                            const cs = sc.cards;
+                            for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++)
+                                if (sc.pred(cs[i], cs[j])) c++;
+                            den = this.comb(cs.length, 2);
+                        }
+                        text = sc.text;
+                        optsTex = this.fracOpts(c, den, sc.cands);
+                        src = sc.src;
+                    }
                     answerStr = this.fstr(c, den);
                     mcTex = this.ftex(c, den);
-                    const cands = [];
-                    for (const v of [c + 1, c - 1, den - c]) {
-                        if (v > 0 && v < den) cands.push([v, den]);
-                    }
-                    optsTex = this.fracOpts(c, den, cands);
                     law = 'list_outcomes';
-                    src = 'S3 Probability J19 (15 P1 Q3)';
                 } else {
                     // J19 Q300 (24 P1 Q9) — P(event) = fraction → find k (Paper 2 · MC)
-                    const scen = [[4, 6], [2, 6], [6, 6], [2, 4], [4, 4], [3, 4], [5, 4], [2, 5]][this.rand(0, 7)];
-                    const F0 = scen[0], k = scen[1];
+                    const variant = this.rand(0, 8);
+                    let F0, k, target;
+                    if (variant === 8) {
+                        F0 = 4; k = 9; target = 'at least 7';
+                    } else {
+                        const scen = [[4, 6], [2, 6], [6, 6], [2, 4], [4, 4], [3, 4], [5, 4], [2, 5]][variant];
+                        F0 = scen[0]; k = scen[1]; target = 'more than 6';
+                    }
                     const T0 = 26 + F0;
                     const pq = this.red(F0 + k, T0 + k);
                     paper = 'Paper 2';
                     text = `The table below shows the distribution of the numbers of keys owned by a group of housewives.` +
                         this.table([3, 4, 5, 6, 7, 8], [10, 9, 4, 3, F0, 'k'], 'Number of keys', 'Number of housewives') +
-                        `If a housewife is randomly selected from the group, then the probability that she owns more than 6 keys is ${pq[0]}/${pq[1]}. Find k.`;
+                        `If a housewife is randomly selected from the group, then the probability that she owns ${target} keys is ${pq[0]}/${pq[1]}. Find k.`;
                     answerStr = String(k);
                     mcTex = String(k);
                     optsTex = this.numOpts(k, [k + 1, k - 1, k + 2, k - 2]);
@@ -941,7 +1079,7 @@
 
             // ════════════ LEVEL 2 — Paper 2 Ch. 16 More about Probability ════════════
             generateL2: function (typeIdx) {
-                const t = typeIdx % 14;
+                const t = typeIdx % 20;
                 const instruction = "Solve the probability problem:";
                 const paper = 'Paper 2';
                 let text = '', answerStr = '', mcTex = '', optsTex = [], src = '', law = 'combinations';
@@ -1126,7 +1264,7 @@
                     optsTex = this.fracOpts(num, den, [[w * T, den], [r * y, den], [y * T, den]]);
                     law = 'turn_game';
                     src = '22 P2 Q283';
-                } else {
+                } else if (t === 13) {
                     // Q286 — juice cans → P(at most 3 grape)
                     const a = this.rand(8, 10), g = this.rand(4, 5);
                     const CT = this.comb(a + g, 6);
@@ -1137,6 +1275,84 @@
                     mcTex = this.ftex(CT - ge4, CT);
                     optsTex = this.fracOpts(CT - ge4, CT, [[ge4, CT], [this.comb(g, 4) * this.comb(a, 2), CT], [this.comb(g, 5) * this.comb(a, 1), CT]]);
                     src = '25 P2 Q286';
+                } else if (t === 14) {
+                    // Q104 — departments (fixed: 8 departments, 2 reps each, 16 members, 4 selected)
+                    const d = 8, r = 2;
+                    const CT = this.comb(d * r, 4);
+                    const diff4 = this.comb(d, 4) * Math.pow(r, 4);
+                    const askDiff = this.rand(0, 1) === 0;
+                    if (askDiff) {
+                        text = `There are ${d} departments in a company. To form a task group of ${d * r} members, ${r} representatives are nominated by each department. From the task group, 4 members are randomly selected. Find the probability that the 4 selected members are nominated by 4 different departments.`;
+                        answerStr = this.fstr(diff4, CT);
+                        mcTex = this.ftex(diff4, CT);
+                        optsTex = this.fracOpts(diff4, CT, [[CT - diff4, CT], [this.comb(d, 4) * Math.pow(r, 3), CT], [this.comb(d, 4), CT]]);
+                    } else {
+                        text = `There are ${d} departments in a company. To form a task group of ${d * r} members, ${r} representatives are nominated by each department. From the task group, 4 members are randomly selected. Find the probability that the 4 selected members are nominated by at most 3 different departments.`;
+                        answerStr = this.fstr(CT - diff4, CT);
+                        mcTex = this.ftex(CT - diff4, CT);
+                        optsTex = this.fracOpts(CT - diff4, CT, [[diff4, CT], [this.comb(d, 4) * Math.pow(r, 3), CT], [this.comb(d, 4), CT]]);
+                    }
+                    src = '12 P1 Q104';
+                } else if (t === 15) {
+                    // Q107 — queue, no boys next to each other (arrangement)
+                    const g = [4, 5, 6, 7][this.rand(0, 3)];
+                    const b = g - 1;
+                    const n = g + b;
+                    const fav = this.comb(g + 1, b) * this.fact(b) * this.fact(g);
+                    text = `If ${b} boys and ${g} girls randomly form a queue, find the probability that no boys are next to each other in the queue.`;
+                    answerStr = this.fstr(fav, this.fact(n));
+                    mcTex = this.ftex(fav, this.fact(n));
+                    optsTex = this.fracOpts(fav, this.fact(n), [[this.fact(n) - fav, this.fact(n)], [this.comb(g + 1, b), this.fact(n)], [this.fact(g), this.fact(n)]]);
+                    law = 'arrangement';
+                    src = '16 P1 Q107';
+                } else if (t === 16) {
+                    // Q114 — plates (fixed: 8 white, 4 red, 1 black, 3 drawn)
+                    const w = 8, r = 4;
+                    const CT = this.comb(w + r + 1, 3);
+                    const same = this.comb(w, 3) + this.comb(r, 3);
+                    const askSame = this.rand(0, 1) === 0;
+                    if (askSame) {
+                        text = `There are ${w} white plates, ${r} red plates and 1 black plate in a box. If 3 plates are randomly drawn from the box at the same time, find the probability that the colours of the 3 plates drawn are the same.`;
+                        answerStr = this.fstr(same, CT);
+                        mcTex = this.ftex(same, CT);
+                        optsTex = this.fracOpts(same, CT, [[CT - same, CT], [this.comb(w, 3), CT], [this.comb(r, 3), CT]]);
+                    } else {
+                        text = `There are ${w} white plates, ${r} red plates and 1 black plate in a box. If 3 plates are randomly drawn from the box at the same time, find the probability that the colours of the 3 plates drawn are all different.`;
+                        answerStr = this.fstr(w * r, CT);
+                        mcTex = this.ftex(w * r, CT);
+                        optsTex = this.fracOpts(w * r, CT, [[w, CT], [r, CT], [w + r, CT]]);
+                    }
+                    src = '25 P1 Q114';
+                } else if (t === 17) {
+                    // Q113 — cups (fixed: 16 red, 4 white, 5 drawn)
+                    const r = 16, w = 4;
+                    const CT = this.comb(r + w, 5);
+                    const ex1 = this.comb(w, 1) * this.comb(r, 4);
+                    text = `In a bag, there are ${r} red cups and ${w} white cups. If 5 cups are randomly drawn from the bag at the same time, find the probability that exactly 1 white cup is drawn.`;
+                    answerStr = this.fstr(ex1, CT);
+                    mcTex = this.ftex(ex1, CT);
+                    optsTex = this.fracOpts(ex1, CT, [[CT - ex1, CT], [this.comb(w, 2) * this.comb(r, 3), CT], [this.comb(w, 3) * this.comb(r, 2), CT]]);
+                    src = '24 P1 Q113';
+                } else if (t === 18) {
+                    // Q106 — bowls (fixed: 5 red, 6 yellow, 3 white, 4 drawn)
+                    const r = 5, y = 6, w = 3;
+                    const CT = this.comb(r + y + w, 4);
+                    const ex2 = this.comb(r, 2) * this.comb(y + w, 2);
+                    text = `A box contains ${r} red bowls, ${y} yellow bowls and ${w} white bowls. If 4 bowls are randomly drawn from the box at the same time, find the probability that exactly 2 red bowls are drawn.`;
+                    answerStr = this.fstr(ex2, CT);
+                    mcTex = this.ftex(ex2, CT);
+                    optsTex = this.fracOpts(ex2, CT, [[CT - ex2, CT], [this.comb(r, 3) * (y + w), CT], [this.comb(r, 4), CT]]);
+                    src = '15 P1 Q106';
+                } else {
+                    // Q105 — cups (fixed: 5 white, 11 blue, 6 drawn)
+                    const w = 5, b = 11;
+                    const CT = this.comb(w + b, 6);
+                    const ge4 = this.comb(w, 4) * this.comb(b, 2) + this.comb(w, 5) * this.comb(b, 1);
+                    text = `A box contains ${w} white cups and ${b} blue cups. If 6 cups are randomly drawn from the box at the same time, find the probability that at least 4 white cups are drawn.`;
+                    answerStr = this.fstr(ge4, CT);
+                    mcTex = this.ftex(ge4, CT);
+                    optsTex = this.fracOpts(ge4, CT, [[CT - ge4, CT], [this.comb(w, 4) * this.comb(b, 2), CT], [this.comb(w, 5) * this.comb(b, 1), CT]]);
+                    src = '13 P1 Q105';
                 }
 
                 return {
@@ -1149,7 +1365,7 @@
 
             // ════════════ LEVEL 3 — Paper 1 Ch. 15-16 conventional (a)(b) sets ════════════
             generateL3Set: function () {
-                const chosen = this.rand(0, 10);
+                const chosen = this.rand(0, 11);
                 if (chosen === 0) return this.setA();
                 if (chosen === 1) return this.setB();
                 if (chosen === 2) return this.setC();
@@ -1160,7 +1376,8 @@
                 if (chosen === 7) return this.setH();
                 if (chosen === 8) return this.setI();
                 if (chosen === 9) return this.setJ();
-                return this.setK();
+                if (chosen === 10) return this.setK();
+                return this.setO();
             },
 
             partF: function (qHtml, n, d, cands, law) {
@@ -1476,6 +1693,31 @@
                 );
                 pa.src = pb.src = pc.src = '17 P1 Q108';
                 return [pa, pb, pc];
+            },
+
+            // setO — J19 Q298 (22 P1 Q9) — cumulative frequency table (3 parts)
+            setO: function () {
+                const tableHtml = '<table class="stat-table"><tbody>' +
+                    '<tr><th>Time taken (minutes)</th><th>Frequency</th><th>Time taken less than (minutes)</th><th>Cumulative frequency</th></tr>' +
+                    '<tr><td>10 - 14</td><td><i>a</i></td><td>14.5</td><td>3</td></tr>' +
+                    '<tr><td>15 - 19</td><td>9</td><td>19.5</td><td>x</td></tr>' +
+                    '<tr><td>20 - 24</td><td><i>b</i></td><td>24.5</td><td>y</td></tr>' +
+                    '<tr><td>25 - 29</td><td>3</td><td>29.5</td><td>20</td></tr>' +
+                    '</tbody></table>';
+                const pa = this.partN(
+                    'The frequency distribution table and the cumulative frequency distribution table below show the distribution of the times taken to complete a 3 km race by a group of students.' + tableHtml + 'Write down the value of x.',
+                    12, [13, 11, 9], 'freq_table'
+                );
+                const pb = this.partN(
+                    'Find the mean of the distribution.',
+                    19, [18, 20, 17], 'use_a'
+                );
+                const pc = this.partF(
+                    'Find the probability that the time taken to complete the 3 km race by a randomly selected student from the group is less than 19.5 minutes.',
+                    3, 5, [[9, 20], [3, 20], [15, 20]], 'use_a'
+                );
+                pa.src = pb.src = pc.src = '22 P1 Q9';
+                return [pa, pb, pc];
             }
         };
 
@@ -1513,7 +1755,7 @@
 
         // --- PAPER TYPOGRAPHY: question text in Times New Roman, unknowns italic ---
         // Generators keep PLAIN text (QA modules parse it); styling happens here at render time.
-        const MATHVAR_SET = new Set('nkPQ'.split(''));
+        const MATHVAR_SET = new Set('nkPQmxy'.split(''));
         function styleVars(html) {
             return html.split(/(<[^>]+>|\$[^$]*\$)/).map(seg => {
                 if (seg.charAt(0) === '<' || seg.charAt(0) === '$') return seg; // existing tags / MathJax stay untouched
@@ -1752,7 +1994,7 @@
             // Levels 1 & 2: 5 single questions, distinct types per game (shuffled order)
             const typeOrder = (level === 1)
                 ? MathGen.shuffle([0,1,2,3,4,5,6,7,8,9]).slice(0, NUM_QUESTIONS)
-                : MathGen.shuffle([0,1,2,3,4,5,6,7,8,9,10,11,12,13]).slice(0, NUM_QUESTIONS);
+                : MathGen.shuffle([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]).slice(0, NUM_QUESTIONS);
             const usedTexts = new Set();
             const usedOpts = new Set();
             const usedAns = new Set();
@@ -2527,7 +2769,7 @@
             const usedAns = new Set(currentQuestions.map(q => q.answerStr));
             let q = null, tKey = null, oKey = null, aKey = null, tries = 0;
             do {
-                const idx = (currentLevel === 1) ? MathGen.rand(0, 9) : MathGen.rand(0, 13);
+                const idx = (currentLevel === 1) ? MathGen.rand(0, 9) : MathGen.rand(0, 19);
                 q = (currentLevel === 1) ? MathGen.generateL1(idx) : MathGen.generateL2(idx);
                 tKey = q.text;
                 oKey = [...q.options].sort().join('~');

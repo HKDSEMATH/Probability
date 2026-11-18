@@ -496,7 +496,7 @@
         const GOOGLE_SCRIPT_URL =
             'https://script.google.com/macros/s/AKfycbybFSAODKwifwclDTUhaKiPjC20eIaUGdiBBttHXaieZP_ydlQBQxvLMjTl9PSjums/exec';
 
-        const APP_VERSION = '9';
+        const APP_VERSION = '10';
 
         // Saved student identity + in-progress game (iPad Safari reloads the tab
         // when memory runs low; without these the student is thrown back to login).
@@ -2024,8 +2024,19 @@
             currentSets = Array.isArray(s.sets) ? s.sets : [];
             activePart = null;
 
-            if (currentLevel === 3) {
+            const isSetLevel = (typeof LEVEL_FLOW !== 'undefined') ? LEVEL_FLOW[currentLevel] === 'set' : currentLevel === 3;
+            if (isSetLevel) {
                 if (!currentSets.length || currentSetIndex >= currentSets.length) { clearGameState(); return false; }
+                while (currentSetIndex < currentSets.length && currentSets[currentSetIndex].every(p => p.done)) currentSetIndex++;
+                if (currentSetIndex >= currentSets.length) {
+                    // Level was finished in the moment before the reload — award it now.
+                    badgeRecords[`level${currentLevel}`] = true;
+                    scoreTotals[`level${currentLevel}`] = (scoreTotals[`level${currentLevel}`] || 0) + currentAttemptMarks();
+                    saveScores();
+                    saveProgress();
+                    clearGameState();
+                    return false;
+                }
             } else {
                 if (!currentQuestions.length || currentQuestionIndex >= currentQuestions.length) { clearGameState(); return false; }
             }
@@ -2039,7 +2050,7 @@
             updateLivesUI();
             refreshSkipBtn();
             updateLiveScore();
-            if (currentLevel === 3) { renderSet(); } else { renderQuestion(); }
+            if (isSetLevel) { renderSet(); } else { renderQuestion(); }
             showToast(`Welcome back, ${studentProfile.name}! Continuing Level ${currentLevel}.`, 'success');
             return true;
         }

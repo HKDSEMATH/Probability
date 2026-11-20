@@ -82,6 +82,83 @@
             color: #e2e8f0;
         }
         .stat-table th { background: rgba(51, 65, 85, 0.6); color: #94a3b8; font-weight: 600; }
+        #question-display .stat-chart, #l3-blocks .stat-chart, .qtext .stat-chart {
+            margin: 6px auto 10px;
+            display: block;
+            width: 100%;
+            max-width: 540px;
+            height: auto;
+            background: #ffffff;
+        }
+        #question-display .stat-chart text, #l3-blocks .stat-chart text, .qtext .stat-chart text {
+            fill: #000000;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        /* Stem-and-leaf: same textbook style as the Statistics chapter
+           (no outer grid, one thin vertical divider, underlined headings,
+           right-aligned stems, generously spaced leaves). */
+        #question-display .stem-table, #l3-blocks .stem-table, .qtext .stem-table {
+            border-collapse: collapse;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        #question-display .stem-table td, #l3-blocks .stem-table td, .qtext .stem-table td {
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            padding: 4px 12px;
+            text-align: center;
+            font-size: 1em;
+            color: #ffffff;
+            font-weight: normal;
+        }
+        #question-display .stem-table th, #l3-blocks .stem-table th, .qtext .stem-table th {
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            padding: 4px 12px;
+            text-align: center;
+            font-weight: normal;
+            font-size: 1em;
+            color: #ffffff;
+        }
+        #question-display .stem-table.stemleaf, #l3-blocks .stem-table.stemleaf, .qtext .stem-table.stemleaf {
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 12px auto;
+        }
+        #question-display .stemleaf td, #l3-blocks .stemleaf td, .qtext .stemleaf td,
+        #question-display .stemleaf th, #l3-blocks .stemleaf th, .qtext .stemleaf th {
+            border: none;
+            font-weight: normal;
+            color: #ffffff;
+        }
+        #question-display .stemleaf td, #l3-blocks .stemleaf td, .qtext .stemleaf td {
+            line-height: 1.6;
+            padding: 5px 0;
+        }
+        #question-display .stemleaf tr:last-child td, #l3-blocks .stemleaf tr:last-child td, .qtext .stemleaf tr:last-child td {
+            padding-bottom: 9px;
+        }
+        #question-display .stemleaf th, #l3-blocks .stemleaf th, .qtext .stemleaf th {
+            font-weight: normal;
+            color: #ffffff;
+            text-decoration: underline;
+            white-space: nowrap;
+            padding: 7px 0 6px;
+        }
+        #question-display .stemleaf td:first-child, #l3-blocks .stemleaf td:first-child, .qtext .stemleaf td:first-child,
+        #question-display .stemleaf th:first-child, #l3-blocks .stemleaf th:first-child, .qtext .stemleaf th:first-child {
+            text-align: right;
+            padding-right: 16px;
+        }
+        #question-display .stemleaf td:last-child, #l3-blocks .stemleaf td:last-child, .qtext .stemleaf td:last-child {
+            text-align: left;
+            padding-left: 16px;
+            letter-spacing: 0.28em;
+            white-space: nowrap;
+            border-left: 1px solid rgba(203, 213, 225, 0.55);
+        }
+        #question-display .stemleaf th:last-child, #l3-blocks .stemleaf th:last-child, .qtext .stemleaf th:last-child {
+            text-align: left;
+            padding-left: 16px;
+            border-left: 1px solid rgba(203, 213, 225, 0.55);
+        }
 
         /* ==== COLORFUL THEME + ANSWER ANIMATIONS ==== */
         body {
@@ -496,7 +573,7 @@
         const GOOGLE_SCRIPT_URL =
             'https://script.google.com/macros/s/AKfycbybFSAODKwifwclDTUhaKiPjC20eIaUGdiBBttHXaieZP_ydlQBQxvLMjTl9PSjums/exec';
 
-        const APP_VERSION = '10';
+        const APP_VERSION = '11';
 
         // Saved student identity + in-progress game (iPad Safari reloads the tab
         // when memory runs low; without these the student is thrown back to login).
@@ -618,7 +695,17 @@
         // ─────────────────────────────────────────────────────────────────────
         const MathGen = {
             rand: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-            shuffle: (array) => [...array].sort(() => Math.random() - 0.5),
+            // Unbiased Fisher-Yates shuffle (the old sort(() => Math.random()-0.5)
+            // trick is biased and gave the earlier types a higher chance of being
+            // picked, i.e. an unintended topic weighting).
+            shuffle: (array) => {
+                const a = [...array];
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    const t = a[i]; a[i] = a[j]; a[j] = t;
+                }
+                return a;
+            },
             gcd: function (a, b) { a = Math.abs(a); b = Math.abs(b); return b ? this.gcd(b, a % b) : a; },
             comb: function (n, r) {
                 if (r < 0 || r > n) return 0;
@@ -746,10 +833,99 @@
                 h += '</tr></tbody></table>';
                 return h;
             },
+            // format a number to at most 1 d.p. (integers stay integers)
+            fmt1: function (v) { return String(Number(Number(v).toFixed(1))); },
+            // 4 unique decimal options, each to at most 1 d.p. (money / expected values)
+            dec1Opts: function (correct, cands) {
+                const out = [this.fmt1(correct)];
+                for (const c of cands) {
+                    if (out.length >= 4) break;
+                    const s = this.fmt1(c);
+                    if (s !== out[0] && out.indexOf(s) === -1) out.push(s);
+                }
+                const steps = [1, -1, 2, -2, 3, -3, 4, -4, 5, -5];
+                let i = 0;
+                while (out.length < 4) {
+                    const s = this.fmt1(parseFloat(correct) + steps[i % steps.length]);
+                    i++;
+                    if (s !== out[0] && out.indexOf(s) === -1) out.push(s);
+                }
+                return this.opts(out);
+            },
+            // stem-and-leaf diagram as a .stat-table (Stem | Leaf)
+            stemTable: function (stems, leaves) {
+                let h = '<table class="stem-table stemleaf"><tr><th>Stem (tens)</th><th>Leaf (units)</th></tr>';
+                for (let i = 0; i < stems.length; i++) {
+                    h += '<tr><td>' + stems[i] + '</td><td>' + leaves[i].join(' &nbsp; ') + '</td></tr>';
+                }
+                h += '</table>';
+                return h;
+            },
+            // inline SVG bar chart, textbook black-and-white style
+            barChartSvg: function (labels, values, axisLabel) {
+                const W = 520, H = 300;
+                const mL = 54, mR = 18, mT = 30, mB = 56;
+                const plotW = W - mL - mR, plotH = H - mT - mB;
+                const maxV = Math.max.apply(null, values.concat([4]));
+                const n = values.length;
+                const bw = plotW / n;
+                const barW = Math.min(46, bw * 0.6);
+                const y = v => mT + plotH - (v / maxV) * plotH;
+                const x = i => mL + bw * i + (bw - barW) / 2;
+                let s = '<svg class="stat-chart" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+                s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="#ffffff"/>';
+                for (let g = 0; g <= 4; g++) {
+                    const val = maxV * g / 4;
+                    const gy = y(val);
+                    s += '<line x1="' + mL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + gy.toFixed(1) + '" stroke="#cccccc" stroke-width="1"/>';
+                    s += '<text x="' + (mL - 7) + '" y="' + (gy + 4).toFixed(1) + '" text-anchor="end" font-size="12" fill="#000000">' + (Number.isInteger(val) ? val : val.toFixed(1)) + '</text>';
+                }
+                s += '<line x1="' + mL + '" y1="' + (mT + plotH) + '" x2="' + (W - mR) + '" y2="' + (mT + plotH) + '" stroke="#000000" stroke-width="1"/>';
+                for (let i = 0; i < n; i++) {
+                    const bx = x(i), by = y(values[i]), bh = (mT + plotH) - by;
+                    s += '<rect x="' + bx.toFixed(1) + '" y="' + by.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="#b3c6e7" stroke="#000000" stroke-width="1"/>';
+                    s += '<text x="' + (bx + barW / 2).toFixed(1) + '" y="' + (by - 5).toFixed(1) + '" text-anchor="middle" font-size="13" fill="#000000">' + values[i] + '</text>';
+                    s += '<text x="' + (bx + barW / 2).toFixed(1) + '" y="' + (H - mB + 18) + '" text-anchor="middle" font-size="13" fill="#000000">' + labels[i] + '</text>';
+                }
+                if (axisLabel) {
+                    s += '<text x="' + (W / 2) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="14" fill="#000000">' + axisLabel + '</text>';
+                }
+                s += '</svg>';
+                return s;
+            },
+            // inline SVG pie chart + legend line (label + value/percent)
+            pieChartSvg: function (items, title) {
+                const W = 500, H = 250;
+                const cx = 128, cy = 125, r = 92;
+                const total = items.reduce((a, b) => a + b.value, 0);
+                const colors = ['#b3c6e7', '#f4b183', '#a9d18e', '#ffd966', '#d9a0c7'];
+                let s = '<svg class="stat-chart" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+                s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="#ffffff"/>';
+                if (title) s += '<text x="' + (W / 2) + '" y="24" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000">' + title + '</text>';
+                let ang = -Math.PI / 2;
+                for (let i = 0; i < items.length; i++) {
+                    const frac = items[i].value / total;
+                    const a2 = ang + frac * 2 * Math.PI;
+                    const x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
+                    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+                    const large = (frac > 0.5) ? 1 : 0;
+                    s += '<path d="M ' + cx + ' ' + cy + ' L ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x2.toFixed(2) + ' ' + y2.toFixed(2) + ' Z" fill="' + colors[i % colors.length] + '" stroke="#000000" stroke-width="1"/>';
+                    ang = a2;
+                }
+                const lx = 258, ly0 = 52, lh = 28;
+                items.forEach((it, i) => {
+                    const ly = ly0 + i * lh;
+                    s += '<rect x="' + lx + '" y="' + (ly - 12) + '" width="14" height="14" fill="' + colors[i % colors.length] + '" stroke="#000000" stroke-width="1"/>';
+                    s += '<text x="' + (lx + 21) + '" y="' + ly + '" font-size="14" fill="#000000">' + it.label + ' ' + it.value + (it.suffix || '') + '</text>';
+                });
+                s += '</svg>';
+                return s;
+            },
 
             // ════════════ LEVEL 1 — TSA 3B12 + J19 S3 Probability ════════════
             generateL1: function (typeIdx) {
-                const t = typeIdx % 10;
+                const t = typeIdx % 16;
+                if (t >= 10) return this.coreQuestion(t);
                 const instruction = "Solve the probability problem:";
                 let text = '', answerStr = '', mcTex = '', optsTex = [], law = 'freq_table', src = '', paper = 'TSA';
 
@@ -1104,6 +1280,349 @@
                     options: optsTex,
                     firstStepLaw: law
                 };
+            },
+
+            // ════════════ LEVEL 1 EXTRA (t10-t15) — Core skill scenarios ════════════
+            // One Core-skill question builder shared by the six new types. Each type is
+            // a fixed array of 17 scenarios (see L1_EXTRA); the builder picks one at
+            // random, assembles the display (table/bar/pie/stem or prose) and the four
+            // MC options, and randomises mc/fill per instance.
+            coreQuestion: function (t) {
+                const SRC = { 10: 'Statistics + Probability', 11: 'Find unknown count', 12: 'At the same time', 13: 'With replacement', 14: 'Expected value', 15: 'Expected reward' };
+                const LAW = { 10: 'freq_table', 11: 'fraction_count', 12: 'combinations', 13: 'list_outcomes', 14: 'expected_value', 15: 'expected_value' };
+                const s = this.L1_EXTRA[t][this.rand(0, this.L1_EXTRA[t].length - 1)];
+                let qHtml = s.text;
+                if (s.chart === 'table' || s.chart === 'bar') {
+                    let labels = s.labels || s.values.map(v => String(v));
+                    let freq = s.freq || s.vals || s.counts || s.probs;
+                    // Numeric value tables (expected value) read best in ascending order.
+                    if (!s.labels && s.values) {
+                        const pairs = s.values.map((v, i) => [v, freq[i]]);
+                        pairs.sort((a, b) => a[0] - b[0]);
+                        labels = pairs.map(x => String(x[0]));
+                        freq = pairs.map(x => x[1]);
+                    }
+                    const head = s.headLabel || (s.values ? 'Value' : 'Outcome');
+                    const fLabel = s.freqLabel || (s.values ? (s.counts ? 'Frequency' : 'Probability') : 'Frequency');
+                    if (s.chart === 'table') qHtml = s.intro + ':' + this.table(labels, freq, head, fLabel) + ' ' + s.ask;
+                    else qHtml = s.intro + ':' + this.barChartSvg(labels, freq, s.axisLabel) + ' ' + s.ask;
+                } else if (s.chart === 'pie') {
+                    qHtml = s.intro + ':' + this.pieChartSvg(s.items, s.title) + ' ' + s.ask;
+                } else if (s.chart === 'stem') {
+                    qHtml = s.intro + ':' + this.stemTable(s.stems, s.leaves) + ' ' + s.ask;
+                }
+                let mc, opts, answerStr;
+                if (s.ansFrac) { mc = this.ftex(s.ansFrac[0], s.ansFrac[1]); opts = this.fracOpts(s.ansFrac[0], s.ansFrac[1], s.dist); answerStr = s.ans; }
+                else if (s.eq) { answerStr = String(s.ans); mc = answerStr; opts = this.numOpts(s.ans, s.dist); }
+                else { answerStr = this.fmt1(s.ans); mc = answerStr; opts = this.dec1Opts(answerStr, s.dist); }
+                const q = {
+                    instruction: "Solve the probability problem:",
+                    paper: 'Core', src: SRC[t],
+                    text: s.text, qHtml: qHtml,
+                    answerStr: answerStr, mcAnswerStr: mc,
+                    options: opts,
+                    firstStepLaw: LAW[t],
+                    mode: (this.rand(0, 1) === 0) ? 'mc' : 'fill'
+                };
+                if (s.favIdx || s.stems) {
+                    if (s.chart === 'pie') q.chartData = { labels: s.items.map(x => x.label), vals: s.items.map(x => x.value), pct: s.items[0].suffix === '%' };
+                    else if (s.chart === 'stem') q.chartData = { stems: s.stems, leaves: s.leaves };
+                    else q.chartData = { labels: s.labels, vals: s.vals };
+                }
+                return q;
+            },
+
+            // 102 fixed Core-skill scenarios (JSMIA All-in-One Practice 3B12 S1-3, adapted).
+            // `text` is the plain stem (unique, no HTML); `qHtml` is built by coreQuestion.
+            L1_EXTRA: {
+                10: [
+                    {chart:'table',text:'The table shows the number of workshops attended by 20 students: 1 workshop - 4 students, 2 workshops - 6 students, 3 workshops - 5 students, 4 workshops - 3 students, 5 workshops - 2 students. A student is chosen at random. Find the probability that he or she attends at most 3 workshops.',
+                     intro:'The table shows the number of workshops attended by 20 students',ask:'A student is chosen at random. Find the probability that he or she attends at most 3 workshops.',
+                     labels:['1','2','3','4','5'],vals:[4,6,5,3,2],headLabel:'Number of workshops',favIdx:[0,1,2],
+                     ans:'3/4',ansFrac:[3,4],dist:[[1,5],[7,10],[17,20]]},
+                    {chart:'bar',text:'The bar chart shows the number of books read last month by 25 students: 0 books - 5 students, 1 book - 8 students, 2 books - 6 students, 3 books - 4 students, 4 books - 2 students. A student is chosen at random. Find the probability that he or she read fewer than 3 books.',
+                     intro:'The bar chart shows the number of books read last month by 25 students',ask:'A student is chosen at random. Find the probability that he or she read fewer than 3 books.',
+                     labels:['0','1','2','3','4'],vals:[5,8,6,4,2],axisLabel:'Number of books',favIdx:[0,1,2],
+                     ans:'19/25',ansFrac:[19,25],dist:[[6,25],[17,25],[14,25]]},
+                    {chart:'pie',text:'The pie chart shows the favourite fruits of 40 children: Apple 30%, Banana 25%, Orange 20%, Pear 15%, Grape 10%. A child is chosen at random. Find the probability that his or her favourite fruit is apple or orange.',
+                     intro:'The pie chart shows the favourite fruits of 40 children',ask:'A child is chosen at random. Find the probability that his or her favourite fruit is apple or orange.',
+                     items:[{label:'Apple',value:30,suffix:'%'},{label:'Banana',value:25,suffix:'%'},{label:'Orange',value:20,suffix:'%'},{label:'Pear',value:15,suffix:'%'},{label:'Grape',value:10,suffix:'%'}],title:'Favourite fruit',favIdx:[0,2],
+                     ans:'1/2',ansFrac:[1,2],dist:[[3,10],[5,8],[13,20]]},
+                    {chart:'stem',text:'The stem-and-leaf diagram shows the heights in cm of 13 students: stem 11 leaves 2, 4, 7, 8, 9; stem 12 leaves 3, 6; stem 13 leaves 0, 4, 7, 9; stem 14 leaves 1, 5. A student is chosen at random. Find the probability that he or she is not taller than 130 cm.',
+                     intro:'The stem-and-leaf diagram shows the heights in cm of 13 students',ask:'A student is chosen at random. Find the probability that he or she is not taller than 130 cm.',
+                     stems:[11,12,13,14],leaves:[[2,4,7,8,9],[3,6],[0,4,7,9],[1,5]],stemOp:'<=',stemRef:'limit',limit:130,
+                     ans:'8/13',ansFrac:[8,13],dist:[[5,13],[7,13],[9,13]]},
+                    {chart:'table',text:'The table shows the heights of 34 basketball players: 170-174 cm - 4, 175-179 cm - 6, 180-184 cm - 5, 185-189 cm - 7, 190-194 cm - 8, 195-199 cm - 4. A player is chosen at random. Find the probability that his height is less than 184.5 cm.',
+                     intro:'The table shows the heights of 34 basketball players',ask:'A player is chosen at random. Find the probability that his height is less than 184.5 cm.',
+                     labels:['170-174','175-179','180-184','185-189','190-194','195-199'],vals:[4,6,5,7,8,4],headLabel:'Height (cm)',favIdx:[0,1,2],
+                     ans:'15/34',ansFrac:[15,34],dist:[[11,34],[19,34],[7,17]]},
+                    {chart:'stem',text:'The stem-and-leaf diagram shows the ages of 16 staff: stem 2 leaves 1, 5, 6; stem 3 leaves 1, 3, 5, 5, 7, 9; stem 4 leaves 2, 4, 8; stem 5 leaves 1, 3, 9; stem 6 leaves 1. A staff member is chosen at random. Find the probability that his or her age is not greater than the mean of the distribution.',
+                     intro:'The stem-and-leaf diagram shows the ages of 16 staff',ask:'A staff member is chosen at random. Find the probability that his or her age is not greater than the mean of the distribution.',
+                     stems:[2,3,4,5,6],leaves:[[1,5,6],[1,3,5,5,7,9],[2,4,8],[1,3,9],[1]],stemOp:'<=',stemRef:'mean',
+                     ans:'9/16',ansFrac:[9,16],dist:[[7,16],[1,2],[5,16]]},
+                    {chart:'table',text:'The table shows the blood types of 40 students: type A - 12, type B - 9, type AB - 5, type O - 14. A student is chosen at random. Find the probability that his or her blood type is not O.',
+                     intro:'The table shows the blood types of 40 students',ask:'A student is chosen at random. Find the probability that his or her blood type is not O.',
+                     labels:['Type A','Type B','Type AB','Type O'],vals:[12,9,5,14],headLabel:'Blood type',favIdx:[0,1,2],
+                     ans:'13/20',ansFrac:[13,20],dist:[[7,20],[27,40],[3,5]]},
+                    {chart:'bar',text:'The bar chart shows the favourite season of 30 children: Summer - 10, Autumn - 6, Winter - 5, Spring - 9. A child is chosen at random. Find the probability that his or her favourite season is not winter.',
+                     intro:'The bar chart shows the favourite season of 30 children',ask:'A child is chosen at random. Find the probability that his or her favourite season is not winter.',
+                     labels:['Summer','Autumn','Winter','Spring'],vals:[10,6,5,9],axisLabel:'Season',favIdx:[0,1,3],
+                     ans:'5/6',ansFrac:[5,6],dist:[[1,6],[7,10],[2,3]]},
+                    {chart:'pie',text:'The pie chart shows the favourite game types of 50 boys: Action 40%, Adventure 25%, Puzzle 20%, Strategy 15%. A boy is chosen at random. Find the probability that his favourite game type is action or strategy.',
+                     intro:'The pie chart shows the favourite game types of 50 boys',ask:'A boy is chosen at random. Find the probability that his favourite game type is action or strategy.',
+                     items:[{label:'Action',value:40,suffix:'%'},{label:'Adventure',value:25,suffix:'%'},{label:'Puzzle',value:20,suffix:'%'},{label:'Strategy',value:15,suffix:'%'}],title:'Favourite game type',favIdx:[0,3],
+                     ans:'11/20',ansFrac:[11,20],dist:[[9,20],[3,5],[13,20]]},
+                    {chart:'table',text:'The table shows the times taken by 45 boys to complete a video game: 60-99 min - 8, 100-139 min - 12, 140-179 min - 15, 180-219 min - 10. A boy is chosen at random. Find the probability that his time is less than 179.5 min.',
+                     intro:'The table shows the times taken by 45 boys to complete a video game',ask:'A boy is chosen at random. Find the probability that his time is less than 179.5 min.',
+                     labels:['60-99','100-139','140-179','180-219'],vals:[8,12,15,10],headLabel:'Time (min)',favIdx:[0,1,2],
+                     ans:'7/9',ansFrac:[7,9],dist:[[8,15],[5,9],[2,3]]},
+                    {chart:'table',text:'The table shows the times spent in a museum by 60 visitors: 50-79 min - 12, 80-109 min - 24, 110-139 min - 16, 140-169 min - 8. A visitor is chosen at random. Find the probability that his or her time is less than 109.5 min.',
+                     intro:'The table shows the times spent in a museum by 60 visitors',ask:'A visitor is chosen at random. Find the probability that his or her time is less than 109.5 min.',
+                     labels:['50-79','80-109','110-139','140-169'],vals:[12,24,16,8],headLabel:'Time (min)',favIdx:[0,1],
+                     ans:'3/5',ansFrac:[3,5],dist:[[2,5],[7,10],[11,20]]},
+                    {chart:'bar',text:'The bar chart shows the number of music albums bought last year by 30 students: 0 albums - 7, 1 album - 9, 2 albums - 6, 3 albums - 5, 4 albums - 3. A student is chosen at random. Find the probability that he or she bought more than 2 albums.',
+                     intro:'The bar chart shows the number of music albums bought last year by 30 students',ask:'A student is chosen at random. Find the probability that he or she bought more than 2 albums.',
+                     labels:['0','1','2','3','4'],vals:[7,9,6,5,3],axisLabel:'Number of albums',favIdx:[3,4],
+                     ans:'4/15',ansFrac:[4,15],dist:[[11,15],[1,3],[7,30]]},
+                    {chart:'stem',text:'The stem-and-leaf diagram shows the quiz scores of 12 students: stem 1 leaves 0, 4, 6, 8; stem 2 leaves 0, 2, 4, 6; stem 3 leaves 0, 6; stem 4 leaves 0, 4. A student is chosen at random. Find the probability that his or her score is greater than the mean of the distribution.',
+                     intro:'The stem-and-leaf diagram shows the quiz scores of 12 students',ask:'A student is chosen at random. Find the probability that his or her score is greater than the mean of the distribution.',
+                     stems:[1,2,3,4],leaves:[[0,4,6,8],[0,2,4,6],[0,6],[0,4]],stemOp:'>',stemRef:'mean',
+                     ans:'5/12',ansFrac:[5,12],dist:[[7,12],[1,2],[2,5]]},
+                    {chart:'pie',text:'The pie chart shows the number of pencils owned by 40 students: 1 pencil - 40%, 2 pencils - 30%, 3 pencils - 15%, 4 pencils - 10%, 5 pencils - 5%. A student is chosen at random. Find the probability that he or she owns at least 3 pencils.',
+                     intro:'The pie chart shows the number of pencils owned by 40 students',ask:'A student is chosen at random. Find the probability that he or she owns at least 3 pencils.',
+                     items:[{label:'1 pencil',value:40,suffix:'%'},{label:'2 pencils',value:30,suffix:'%'},{label:'3 pencils',value:15,suffix:'%'},{label:'4 pencils',value:10,suffix:'%'},{label:'5 pencils',value:5,suffix:'%'}],title:'Number of pencils',favIdx:[2,3,4],
+                     ans:'3/10',ansFrac:[3,10],dist:[[1,2],[7,20],[2,5]]},
+                    {chart:'bar',text:'The bar chart shows the number of movies watched last month by 30 people: 0 movies - 4, 1 movie - 7, 2 movies - 10, 3 movies - 6, 4 movies - 3. A person is chosen at random. Find the probability that he or she watched exactly 2 movies.',
+                     intro:'The bar chart shows the number of movies watched last month by 30 people',ask:'A person is chosen at random. Find the probability that he or she watched exactly 2 movies.',
+                     labels:['0','1','2','3','4'],vals:[4,7,10,6,3],axisLabel:'Number of movies',favIdx:[2],
+                     ans:'1/3',ansFrac:[1,3],dist:[[7,30],[2,5],[7,15]]},
+                    {chart:'pie',text:'The pie chart shows the number of backpacks owned by 40 boys: 1 backpack - 14 boys, 2 backpacks - 10 boys, 3 backpacks - 8 boys, 4 backpacks - 5 boys, 5 backpacks - 3 boys. A boy is chosen at random. Find the probability that he owns at least 3 backpacks.',
+                     intro:'The pie chart shows the number of backpacks owned by 40 boys',ask:'A boy is chosen at random. Find the probability that he owns at least 3 backpacks.',
+                     items:[{label:'1 backpack',value:14,suffix:''},{label:'2 backpacks',value:10,suffix:''},{label:'3 backpacks',value:8,suffix:''},{label:'4 backpacks',value:5,suffix:''},{label:'5 backpacks',value:3,suffix:''}],title:'Number of backpacks',favIdx:[2,3,4],
+                     ans:'2/5',ansFrac:[2,5],dist:[[3,5],[11,20],[7,20]]},
+                    {chart:'table',text:'The table shows the number of cameras owned by 21 photographers: 1 camera - 1, 2 cameras - 5, 3 cameras - 5, 4 cameras - 6, 5 cameras - 4. A photographer is chosen at random. Find the probability that he or she owns more than 2 cameras.',
+                     intro:'The table shows the number of cameras owned by 21 photographers',ask:'A photographer is chosen at random. Find the probability that he or she owns more than 2 cameras.',
+                     labels:['1','2','3','4','5'],vals:[1,5,5,6,4],headLabel:'Number of cameras',favIdx:[2,3,4],
+                     ans:'5/7',ansFrac:[5,7],dist:[[2,7],[11,21],[4,7]]}
+                ],
+                11: [
+                    {chart:'none',text:'A box contains n red balls, 5 yellow balls and 7 blue balls. A ball is drawn at random from the box. The probability of drawing a yellow ball is 1/4. Find the value of n.',
+                     ans:8,dist:[6,12,16],eq:{fc:0,fk:5,tc:1,tk:12,p:1,q:4}},
+                    {chart:'none',text:'A bag contains 5 yellow marbles, 4 green marbles and x blue marbles. A marble is drawn at random from the bag. The probability of drawing a blue marble is 2/5. Find the value of x.',
+                     ans:6,dist:[4,9,12],eq:{fc:1,fk:0,tc:1,tk:9,p:2,q:5}},
+                    {chart:'none',text:'A box contains n white cards and 15 black cards. A card is drawn at random from the box. The probability of drawing a black card is 3/7. Find the value of n.',
+                     ans:20,dist:[10,22,35],eq:{fc:0,fk:15,tc:1,tk:15,p:3,q:7}},
+                    {chart:'table',text:'The table shows the number of workshops attended by students on a day: 1 workshop - 4 students, 2 workshops - k students, 3 workshops - 6 students, 4 workshops - 8 students, 5 workshops - 5 students. A student is chosen at random. The probability that he or she attends less than 5 workshops is 5/6. Find the value of k.',
+                     intro:'The table shows the number of workshops attended by students on a day',ask:'A student is chosen at random. The probability that he or she attends less than 5 workshops is 5/6. Find the value of k.',
+                     labels:['1','2','3','4','5'],freq:[4,'k',6,8,5],headLabel:'Number of workshops',
+                     ans:7,dist:[4,10,15],eq:{fc:1,fk:18,tc:1,tk:23,p:5,q:6}},
+                    {chart:'table',text:'The table shows the number of cameras owned by photographers: 1 camera - 1, 2 cameras - 5, 3 cameras - 5, 4 cameras - 6, 5 cameras - k. A photographer is chosen at random. The probability that he or she owns more than 2 cameras is 7/10. Find the value of k.',
+                     intro:'The table shows the number of cameras owned by photographers',ask:'A photographer is chosen at random. The probability that he or she owns more than 2 cameras is 7/10. Find the value of k.',
+                     labels:['1','2','3','4','5'],freq:[1,5,5,6,'k'],headLabel:'Number of cameras',
+                     ans:3,dist:[2,6,8],eq:{fc:1,fk:11,tc:1,tk:17,p:7,q:10}},
+                    {chart:'table',text:'The table shows the number of music albums bought last year by students: 0 albums - 7 students, 1 album - 9 students, 2 albums - 6 students, 3 albums - k students, 4 albums - 3 students. A student is chosen at random. The probability that he or she did not buy any album is 1/5. Find the value of k.',
+                     intro:'The table shows the number of music albums bought last year by students',ask:'A student is chosen at random. The probability that he or she did not buy any album is 1/5. Find the value of k.',
+                     labels:['0','1','2','3','4'],freq:[7,9,6,'k',3],headLabel:'Number of albums',
+                     ans:10,dist:[5,12,15],eq:{fc:0,fk:7,tc:1,tk:25,p:1,q:5}},
+                    {chart:'table',text:'The table shows the number of movies watched last month by people: 0 movies - 4 people, 1 movie - 7 people, 2 movies - k people, 3 movies - 6 people, 4 movies - 3 people. A person is chosen at random. The probability that he or she watched exactly 2 movies is 4/9. Find the value of k.',
+                     intro:'The table shows the number of movies watched last month by people',ask:'A person is chosen at random. The probability that he or she watched exactly 2 movies is 4/9. Find the value of k.',
+                     labels:['0','1','2','3','4'],freq:[4,7,'k',6,3],headLabel:'Number of movies',
+                     ans:16,dist:[8,12,20],eq:{fc:1,fk:0,tc:1,tk:20,p:4,q:9}},
+                    {chart:'none',text:'In a group of children, 12 of them like grapes and these children make up 20% of the group. Find the total number of children in the group.',
+                     ans:60,dist:[24,48,72],eq:{fc:0,fk:12,tc:1,tk:0,p:1,q:5}},
+                    {chart:'table',text:'A die is thrown 150 times and the numbers of times each face appears are: 1 - 2x, 2 - 25, 3 - 30, 4 - (x+3), 5 - 19, 6 - 46. Find the value of x.',
+                     intro:'A die is thrown 150 times and the numbers of times each face appears are',ask:'Find the value of x.',
+                     labels:['1','2','3','4','5','6'],freq:['2x','25','30','x+3','19','46'],headLabel:'Face',
+                     ans:9,dist:[6,12,15],eq:{sc:3,sk:123,total:150}},
+                    {chart:'table',text:'In a school, 160 students are asked about their favourite drink: juice - (y+5) students, milk - 27 students, tea - (y-9) students, soft drink - 61 students. Find the value of y.',
+                     intro:'In a school, 160 students are asked about their favourite drink',ask:'Find the value of y.',
+                     labels:['Juice','Milk','Tea','Soft drink'],freq:['y+5','27','y-9','61'],headLabel:'Drink',
+                     ans:38,dist:[28,44,53],eq:{sc:2,sk:84,total:160}},
+                    {chart:'none',text:'There are 24 students and n teachers in a room. A person is chosen at random from the room. The probability of choosing a teacher is 3/7. Find the value of n.',
+                     ans:18,dist:[9,12,21],eq:{fc:1,fk:0,tc:1,tk:24,p:3,q:7}},
+                    {chart:'none',text:'A box contains 8 red balls, n yellow balls and 4 green balls. A ball is drawn at random from the box. The probability of drawing a red ball is 1/2. Find the value of n.',
+                     ans:4,dist:[2,6,8],eq:{fc:0,fk:8,tc:1,tk:12,p:1,q:2}},
+                    {chart:'none',text:'A bag contains x red marbles and 20 blue marbles. A marble is drawn at random from the bag. The probability of drawing a blue marble is 4/5. Find the value of x.',
+                     ans:5,dist:[8,15,25],eq:{fc:0,fk:20,tc:1,tk:20,p:4,q:5}},
+                    {chart:'table',text:'The table shows the number of books read last month by students: 0 books - 5 students, 1 book - 8 students, 2 books - k students, 3 books - 6 students, 4 books - 4 students. A student is chosen at random. The probability that he or she read fewer than 3 books is 4/5. Find the value of k.',
+                     intro:'The table shows the number of books read last month by students',ask:'A student is chosen at random. The probability that he or she read fewer than 3 books is 4/5. Find the value of k.',
+                     labels:['0','1','2','3','4'],freq:[5,8,'k',6,4],headLabel:'Number of books',
+                     ans:27,dist:[17,22,32],eq:{fc:1,fk:13,tc:1,tk:23,p:4,q:5}},
+                    {chart:'table',text:'The table shows the test scores of students: 1 score - 2 students, 2 scores - 7 students, 3 scores - 9 students, 4 scores - 5 students, 5 scores - k students. A student is chosen at random. The probability that he or she scores at most 4 is 23/35. Find the value of k.',
+                     intro:'The table shows the test scores of students',ask:'A student is chosen at random. The probability that he or she scores at most 4 is 23/35. Find the value of k.',
+                     labels:['1','2','3','4','5'],freq:[2,7,9,5,'k'],headLabel:'Score',
+                     ans:12,dist:[7,17,22],eq:{fc:0,fk:23,tc:1,tk:23,p:23,q:35}},
+                    {chart:'none',text:'A box contains 12 red balls and some blue balls. A ball is drawn at random from the box. The probability of drawing a red ball is 3/10. Find the number of blue balls in the box.',
+                     ans:28,dist:[22,30,40],eq:{fc:0,fk:12,tc:1,tk:12,p:3,q:10}},
+                    {chart:'table',text:'The table shows the favourite fruits of 40 children: Apple 35%, Banana 20%, Orange 15%, Pear x%. Find the value of x.',
+                     intro:'The table shows the favourite fruits of 40 children',ask:'Find the value of x.',
+                     labels:['Apple','Banana','Orange','Pear'],freq:['35%','20%','15%','x%'],headLabel:'Fruit',
+                     ans:30,dist:[20,25,45],eq:{sc:1,sk:70,total:100}}
+                ],
+                12: [
+                    {chart:'none',text:'A bag contains 1 yellow ball, 1 green ball and 2 blue balls. Two balls are drawn at the same time from the bag. Find the probability that the two balls are of different colours.',
+                     ans:'5/6',ansFrac:[5,6],dist:[[1,6],[2,3],[5,12]],items:['Y','G','B','B'],k:2,ordered:false,cond:'diff'},
+                    {chart:'none',text:'A bag contains 2 red balls, 1 yellow ball and 3 green balls. Two balls are drawn at the same time from the bag. Find the probability that the two balls are of the same colour.',
+                     ans:'4/15',ansFrac:[4,15],dist:[[11,15],[1,3],[7,15]],items:['R','R','Y','G','G','G'],k:2,ordered:false,cond:'same'},
+                    {chart:'none',text:'A drawer contains 3 white socks, 2 grey socks and 1 black sock. Two socks are drawn at the same time from the drawer. Find the probability that the two socks are of different colours.',
+                     ans:'11/15',ansFrac:[11,15],dist:[[4,15],[2,3],[7,15]],items:['W','W','W','G','G','B'],k:2,ordered:false,cond:'diff'},
+                    {chart:'none',text:'A box contains one \\$2 coin, one \\$3 coin and two \\$5 coins. Two coins are drawn at the same time from the box. Find the probability that the total value of the two coins is \\$7.',
+                     ans:'1/3',ansFrac:[1,3],dist:[[1,6],[1,2],[2,3]],items:[2,3,5,5],k:2,ordered:false,cond:'sum_eq:7'},
+                    {chart:'none',text:'A box contains one \\$5 coin, two \\$10 coins and one \\$20 coin. Two coins are drawn at the same time from the box. Find the probability that the total value of the two coins is at least \\$20.',
+                     ans:'2/3',ansFrac:[2,3],dist:[[1,3],[1,6],[5,6]],items:[5,10,10,20],k:2,ordered:false,cond:'sum_ge:20'},
+                    {chart:'none',text:'Three numbers are drawn at the same time from the four cards numbered 1, 2, 3 and 4. Find the probability that the sum of the three numbers drawn is even.',
+                     ans:'1/2',ansFrac:[1,2],dist:[[1,4],[3,4],[1,3]],items:[1,2,3,4],k:3,ordered:false,cond:'sum_even'},
+                    {chart:'none',text:'Three numbers are drawn at the same time from the five cards numbered 1, 2, 3, 4 and 5. Find the probability that the sum of the three numbers drawn is odd.',
+                     ans:'2/5',ansFrac:[2,5],dist:[[3,5],[1,2],[1,4]],items:[1,2,3,4,5],k:3,ordered:false,cond:'sum_odd'},
+                    {chart:'none',text:'A box contains seven balls numbered 1, 2, 3, 3, 4, 5 and 5. Two balls are drawn one by one from the box without replacement. Find the probability that the sum of the two numbers drawn is even.',
+                     ans:'11/21',ansFrac:[11,21],dist:[[10,21],[1,2],[13,21]],items:[1,2,3,3,4,5,5],k:2,ordered:true,cond:'sum_even'},
+                    {chart:'none',text:'A box contains seven balls numbered 1, 1, 2, 3, 4, 4 and 6. Two balls are drawn one by one from the box without replacement. Find the probability that the sum of the two numbers drawn is even.',
+                     ans:'3/7',ansFrac:[3,7],dist:[[4,7],[1,2],[5,14]],items:[1,1,2,3,4,4,6],k:2,ordered:true,cond:'sum_even'},
+                    {chart:'none',text:'Two numbers are drawn at the same time from the five cards numbered 2, 4, 6, 8 and 10. Find the probability that the product of the two numbers drawn is less than 16.',
+                     ans:'1/5',ansFrac:[1,5],dist:[[2,5],[1,10],[3,10]],items:[2,4,6,8,10],k:2,ordered:false,cond:'prod_lt:16'},
+                    {chart:'none',text:'Two numbers are drawn at the same time from the six cards numbered 3, 4, 5, 6, 7 and 8. Find the probability that the product of the two numbers drawn is not greater than 24.',
+                     ans:'7/15',ansFrac:[7,15],dist:[[8,15],[1,2],[11,30]],items:[3,4,5,6,7,8],k:2,ordered:false,cond:'prod_le:24'},
+                    {chart:'none',text:'Two numbers are drawn at the same time from the five cards numbered 2, 3, 4, 5 and 6. Find the probability that the product of the two numbers drawn is not greater than 10.',
+                     ans:'3/10',ansFrac:[3,10],dist:[[7,10],[1,5],[1,2]],items:[2,3,4,5,6],k:2,ordered:false,cond:'prod_le:10'},
+                    {chart:'none',text:'A purse contains two \\$1 coins, one \\$2 coin and one \\$5 coin. Three coins are taken out at the same time from the purse. Find the probability that the total value of the coins taken is at least \\$7.',
+                     ans:'3/4',ansFrac:[3,4],dist:[[1,4],[1,2],[3,8]],items:[1,1,2,5],k:3,ordered:false,cond:'sum_ge:7'},
+                    {chart:'none',text:'A purse contains three \\$1 coins, one \\$2 coin and one \\$5 coin. Three coins are taken out at the same time from the purse. Find the probability that the total value of the coins taken is at least \\$7.',
+                     ans:'3/5',ansFrac:[3,5],dist:[[2,5],[1,2],[7,10]],items:[1,1,1,2,5],k:3,ordered:false,cond:'sum_ge:7'},
+                    {chart:'none',text:'A box contains four cards numbered 2, 3, 4 and 5. Three cards are taken out at the same time from the box. Find the probability that the sum of the numbers on the cards taken is 9.',
+                     ans:'1/4',ansFrac:[1,4],dist:[[3,4],[1,2],[1,3]],items:[2,3,4,5],k:3,ordered:false,cond:'sum_eq:9'},
+                    {chart:'none',text:'A box contains five cards numbered 1, 2, 3, 4 and 5. Three cards are taken out at the same time from the box. Find the probability that the sum of the numbers on the cards taken is at most 6.',
+                     ans:'1/10',ansFrac:[1,10],dist:[[3,10],[1,5],[1,2]],items:[1,2,3,4,5],k:3,ordered:false,cond:'sum_le:6'},
+                    {chart:'none',text:'A box contains five balls numbered 1, 2, 3, 4 and 5. Two balls are drawn one by one from the box without replacement. Find the probability that the product of the two numbers drawn is even.',
+                     ans:'7/10',ansFrac:[7,10],dist:[[3,10],[2,5],[9,20]],items:[1,2,3,4,5],k:2,ordered:true,cond:'prod_even'}
+                ],
+                13: [
+                    {chart:'none',text:'A box contains one red card, one yellow card, one green card and one blue card. Two cards are drawn one by one from the box with replacement. Find the probability that one red card and one green card are drawn.',
+                     ans:'1/8',ansFrac:[1,8],dist:[[1,16],[1,4],[3,16]],setup:'cards2',data:['R','Y','G','B'],cond:'one_red_one_green'},
+                    {chart:'none',text:'A box contains 2 red cards, 1 green card and 1 blue card. Two cards are drawn one by one from the box with replacement. Find the probability that no blue card is drawn.',
+                     ans:'9/16',ansFrac:[9,16],dist:[[7,16],[3,4],[5,16]],setup:'cards2',data:['R','R','G','B'],cond:'no_blue'},
+                    {chart:'none',text:'A box contains one ball numbered 1, two balls numbered 3 and one ball numbered 5. Two balls are drawn one by one from the box with replacement. Find the probability that the sum of the two numbers drawn is 6.',
+                     ans:'3/8',ansFrac:[3,8],dist:[[1,4],[5,8],[1,2]],setup:'cards2',data:[1,3,3,5],cond:'sum_eq:6'},
+                    {chart:'none',text:'A box contains one ball numbered 2, two balls numbered 4 and one ball numbered 6. Two balls are drawn one by one from the box with replacement. Find the probability that the sum of the two numbers drawn is at least 9.',
+                     ans:'5/16',ansFrac:[5,16],dist:[[7,16],[3,8],[9,16]],setup:'cards2',data:[2,4,4,6],cond:'sum_ge:9'},
+                    {chart:'none',text:'Two fair dice are thrown. Find the probability that at least one of the numbers obtained is greater than 3.',
+                     ans:'3/4',ansFrac:[3,4],dist:[[1,4],[5,6],[11,12]],setup:'two_dice',cond:'at_least_one_gt3'},
+                    {chart:'none',text:'A letter is drawn at random from each of the words GOOD and TOY. Find the probability that the two letters chosen contain at least one letter O.',
+                     ans:'2/3',ansFrac:[2,3],dist:[[1,3],[1,6],[3,4]],setup:'two_words',data:['GOOD','TOY'],cond:'at_least_one_O'},
+                    {chart:'none',text:'A fair coin is tossed 4 times. Find the probability that at most 2 heads are obtained.',
+                     ans:'11/16',ansFrac:[11,16],dist:[[5,16],[1,2],[7,16]],setup:'coins',data:4,cond:'at_most_2_heads'},
+                    {chart:'none',text:'Two fair dice are thrown. Find the probability that the product of the two numbers obtained is a multiple of 5.',
+                     ans:'11/36',ansFrac:[11,36],dist:[[25,36],[1,4],[5,12]],setup:'two_dice',cond:'prod_mul5'},
+                    {chart:'none',text:'Two fair dice are thrown. Find the probability that the sum of the two numbers obtained is greater than 10.',
+                     ans:'1/12',ansFrac:[1,12],dist:[[1,6],[1,4],[5,36]],setup:'two_dice',cond:'sum_gt:10'},
+                    {chart:'none',text:'A bag contains four balls numbered 2, 4, 8 and 10 and another bag contains five balls numbered 1, 3, 5, 7 and 9. A ball is drawn at random from each bag. Find the probability that the product of the two numbers drawn is divisible by 3.',
+                     ans:'2/5',ansFrac:[2,5],dist:[[3,5],[1,10],[1,2]],setup:'two_bags',data:[[2,4,8,10],[1,3,5,7,9]],cond:'prod_div3'},
+                    {chart:'none',text:'A bag contains five balls numbered 1, 2, 3, 4 and 5 and another bag contains three balls numbered 6, 7 and 8. A ball is drawn at random from each bag. Find the probability that the sum of the two numbers drawn is even.',
+                     ans:'7/15',ansFrac:[7,15],dist:[[8,15],[1,2],[2,3]],setup:'two_bags',data:[[1,2,3,4,5],[6,7,8]],cond:'sum_even'},
+                    {chart:'none',text:'A bag contains 3 red marbles and 1 blue marble. Two marbles are drawn one by one from the bag with replacement. Find the probability that at least one blue marble is drawn.',
+                     ans:'7/16',ansFrac:[7,16],dist:[[9,16],[1,2],[5,16]],setup:'cards2',data:['R','R','R','B'],cond:'at_least_one_blue'},
+                    {chart:'none',text:'A bag contains 2 red marbles and 1 blue marble. Two marbles are drawn one by one from the bag with replacement. Find the probability that the two marbles drawn are of different colours.',
+                     ans:'4/9',ansFrac:[4,9],dist:[[5,9],[2,9],[1,2]],setup:'cards2',data:['R','R','B'],cond:'diff'},
+                    {chart:'none',text:'Two fair dice are thrown. Find the probability that the sum of the two numbers obtained is 7.',
+                     ans:'1/6',ansFrac:[1,6],dist:[[5,36],[1,12],[1,4]],setup:'two_dice',cond:'sum_eq:7'},
+                    {chart:'none',text:'A letter is drawn at random from each of the words PENCIL and MATH. Find the probability that the two letters chosen contain at least one vowel.',
+                     ans:'1/2',ansFrac:[1,2],dist:[[1,3],[2,3],[1,4]],setup:'two_words',data:['PENCIL','MATH'],cond:'at_least_one_vowel'},
+                    {chart:'none',text:'A bag contains four balls numbered 1, 2, 3 and 4 and another bag contains four balls numbered 6, 7, 8 and 9. A ball is drawn at random from each bag. Find the probability that the sum of the two numbers drawn is at least 10.',
+                     ans:'5/8',ansFrac:[5,8],dist:[[3,8],[1,2],[7,16]],setup:'two_bags',data:[[1,2,3,4],[6,7,8,9]],cond:'sum_ge:10'},
+                    {chart:'none',text:'Two fair dice are thrown. Find the probability that the product of the two numbers obtained is a multiple of 6.',
+                     ans:'5/12',ansFrac:[5,12],dist:[[7,12],[1,3],[11,36]],setup:'two_dice',cond:'prod_mul6'}
+                ],
+                14: [
+                    {chart:'table',text:'A box contains four cards numbered 2, three cards numbered 5, two cards numbered 7 and one card numbered 9. A card is drawn at random from the box. Find the expected value of the number on the card.',
+                     intro:'A box contains four cards numbered 2, three cards numbered 5, two cards numbered 7 and one card numbered 9',ask:'A card is drawn at random from the box. Find the expected value of the number on the card.',
+                     values:[2,5,7,9],counts:[4,3,2,1],headLabel:'Number',ans:4.6,dist:[4.4,5.6,4.9],kind:'counts'},
+                    {chart:'table',text:'In a game, the probability of winning is 0.6 and the probability of losing is 0.4. 15 points are awarded for winning and 5 points are awarded for losing. Find the expected value of the number of points awarded.',
+                     intro:'In a game, the probability of winning is 0.6 and the probability of losing is 0.4',ask:'15 points are awarded for winning and 5 points are awarded for losing. Find the expected value of the number of points awarded.',
+                     values:[15,5],probs:[0.6,0.4],headLabel:'Points',ans:11,dist:[9,10,13],kind:'probs'},
+                    {chart:'table',text:'The possible monthly expenses and their probabilities are: \\$200 with probability 0.2, \\$250 with probability 0.3, \\$300 with probability 0.4, \\$350 with probability 0.1. Find the expected monthly expense in dollars.',
+                     intro:'The possible monthly expenses and their probabilities are',ask:'Find the expected monthly expense in dollars.',
+                     values:[200,250,300,350],probs:[0.2,0.3,0.4,0.1],headLabel:'Monthly expense',ans:270,dist:[260,285,295],kind:'probs'},
+                    {chart:'none',text:'A fair die is thrown once. Find the expected value of the number obtained.',
+                     values:[1,2,3,4,5,6],counts:[1,1,1,1,1,1],ans:3.5,dist:[3,4,3.6],kind:'counts'},
+                    {chart:'table',text:'A bag contains three balls numbered 3, two balls numbered 4, three balls numbered 5 and two balls numbered 6. A ball is drawn at random from the bag. Find the expected value of the number on the ball.',
+                     intro:'A bag contains three balls numbered 3, two balls numbered 4, three balls numbered 5 and two balls numbered 6',ask:'A ball is drawn at random from the bag. Find the expected value of the number on the ball.',
+                     values:[3,4,5,6],counts:[3,2,3,2],headLabel:'Number',ans:4.4,dist:[4.6,4.5,5.2],kind:'counts'},
+                    {chart:'bar',text:'The bar chart shows the number of scooters sold on each of 20 days: 1 scooter - 4 days, 2 scooters - 7 days, 3 scooters - 4 days, 4 scooters - 3 days, 5 scooters - 2 days. Find the expected number of scooters sold on a certain day.',
+                     intro:'The bar chart shows the number of scooters sold on each of 20 days',ask:'Find the expected number of scooters sold on a certain day.',
+                     values:[1,2,3,4,5],counts:[4,7,4,3,2],axisLabel:'Number of scooters',ans:2.6,dist:[2.4,2.5,3.1],kind:'counts'},
+                    {chart:'bar',text:'The bar chart shows the number of scarves owned by 20 students: 1 scarf - 6 students, 2 scarves - 8 students, 3 scarves - 4 students, 4 scarves - 2 students. A student is chosen at random. Find the expected number of scarves that he or she owns.',
+                     intro:'The bar chart shows the number of scarves owned by 20 students',ask:'A student is chosen at random. Find the expected number of scarves that he or she owns.',
+                     values:[1,2,3,4],counts:[6,8,4,2],axisLabel:'Number of scarves',ans:2.1,dist:[2.2,2.4,1.9],kind:'counts'},
+                    {chart:'table',text:'A bag contains two cards numbered 1, three cards numbered 3 and five cards numbered 6. A card is drawn at random from the bag. Find the expected value of the number on the card.',
+                     intro:'A bag contains two cards numbered 1, three cards numbered 3 and five cards numbered 6',ask:'A card is drawn at random from the bag. Find the expected value of the number on the card.',
+                     values:[1,3,6],counts:[2,3,5],headLabel:'Number',ans:4.1,dist:[4.4,3.9,5.1],kind:'counts'},
+                    {chart:'table',text:'In a test, the probability of answering a question correctly is 0.8 and the probability of answering it wrongly is 0.2. 25 marks are awarded for a correct answer and 5 marks are awarded for a wrong answer. Find the expected value of the marks awarded.',
+                     intro:'In a test, the probability of answering a question correctly is 0.8 and the probability of answering it wrongly is 0.2',ask:'25 marks are awarded for a correct answer and 5 marks are awarded for a wrong answer. Find the expected value of the marks awarded.',
+                     values:[25,5],probs:[0.8,0.2],headLabel:'Marks',ans:21,dist:[20,24,25],kind:'probs'},
+                    {chart:'none',text:'Two fair dice are thrown once. Find the expected value of the sum of the two numbers obtained.',
+                     ans:7,dist:[6,8,6.5],kind:'twodie'},
+                    {chart:'table',text:'A bag contains two balls numbered 1, four balls numbered 2 and four balls numbered 3. A ball is drawn at random from the bag. Find the expected value of the number on the ball.',
+                     intro:'A bag contains two balls numbered 1, four balls numbered 2 and four balls numbered 3',ask:'A ball is drawn at random from the bag. Find the expected value of the number on the ball.',
+                     values:[1,2,3],counts:[2,4,4],headLabel:'Number',ans:2.2,dist:[2.4,2.1,2.5],kind:'counts'},
+                    {chart:'table',text:'A box contains three cards numbered 2, five cards numbered 6 and two cards numbered 10. A card is drawn at random from the box. Find the expected value of the number on the card.',
+                     intro:'A box contains three cards numbered 2, five cards numbered 6 and two cards numbered 10',ask:'A card is drawn at random from the box. Find the expected value of the number on the card.',
+                     values:[2,6,10],counts:[3,5,2],headLabel:'Number',ans:5.6,dist:[5.4,6.2,5.8],kind:'counts'},
+                    {chart:'table',text:'The table shows the number of cakes sold on each of 20 days: 0 cakes - 5 days, 1 cake - 6 days, 2 cakes - 5 days, 3 cakes - 4 days. Find the expected number of cakes sold on a certain day.',
+                     intro:'The table shows the number of cakes sold on each of 20 days',ask:'Find the expected number of cakes sold on a certain day.',
+                     values:[0,1,2,3],counts:[5,6,5,4],headLabel:'Number of cakes',ans:1.4,dist:[1.5,1.6,2.1],kind:'counts'},
+                    {chart:'table',text:'The possible test scores and their probabilities are: 60 with probability 0.2, 70 with probability 0.5, 80 with probability 0.2, 90 with probability 0.1. Find the expected value of the score.',
+                     intro:'The possible test scores and their probabilities are',ask:'Find the expected value of the score.',
+                     values:[60,70,80,90],probs:[0.2,0.5,0.2,0.1],headLabel:'Score',ans:72,dist:[70,75,68],kind:'probs'},
+                    {chart:'table',text:'A bag contains one ball numbered 5, four balls numbered 6 and five balls numbered 7. A ball is drawn at random from the bag. Find the expected value of the number on the ball.',
+                     intro:'A bag contains one ball numbered 5, four balls numbered 6 and five balls numbered 7',ask:'A ball is drawn at random from the bag. Find the expected value of the number on the ball.',
+                     values:[5,6,7],counts:[1,4,5],headLabel:'Number',ans:6.4,dist:[6.2,6.5,7.4],kind:'counts'},
+                    {chart:'table',text:'A box contains eight cards numbered from 1 to 8. A card is drawn at random from the box. Find the expected value of the number on the card.',
+                     intro:'A box contains eight cards numbered from 1 to 8',ask:'A card is drawn at random from the box. Find the expected value of the number on the card.',
+                     values:[1,2,3,4,5,6,7,8],counts:[1,1,1,1,1,1,1,1],headLabel:'Number',ans:4.5,dist:[4.4,5,3.5],kind:'counts'},
+                    {chart:'table',text:'The table shows the number of scarves owned by 20 students: 1 scarf - 2 students, 2 scarves - 10 students, 3 scarves - 6 students, 4 scarves - 2 students. A student is chosen at random. Find the expected number of scarves that he or she owns.',
+                     intro:'The table shows the number of scarves owned by 20 students',ask:'A student is chosen at random. Find the expected number of scarves that he or she owns.',
+                     values:[1,2,3,4],counts:[2,10,6,2],headLabel:'Number of scarves',ans:2.4,dist:[2.2,2.6,3],kind:'counts'}
+                ],
+                15: [
+                    {chart:'none',text:'In a game, the probability of winning is 0.4. A player gains \\$40 for winning and loses \\$10 for losing. Find the expected gain of the game in dollars.',
+                     values:[40,-10],probs:[0.4,0.6],ans:10,dist:[16,6,4],kind:'probs'},
+                    {chart:'table',text:'The probabilities that Justin takes the bus, the minibus and the train are 0.5, 0.2 and 0.3, and the fares are \\$4, \\$6 and \\$10 respectively. Find the expected fare in dollars.',
+                     intro:'The probabilities that Justin takes the bus, the minibus and the train are 0.5, 0.2 and 0.3, and the fares are \\$4, \\$6 and \\$10 respectively',ask:'Find the expected fare in dollars.',
+                     values:[4,6,10],probs:[0.5,0.2,0.3],headLabel:'Fare',ans:6.2,dist:[5.8,6.6,7.2],kind:'probs'},
+                    {chart:'none',text:'A box contains 20 balls: 1 is black, 4 are white and the rest are red. A ball is drawn at random from the box. \\$100 is awarded for a black ball, \\$20 for a white ball and nothing for a red ball. Find the expected reward in dollars.',
+                     values:[100,20,0],counts:[1,4,15],ans:9,dist:[14,5,11],kind:'counts'},
+                    {chart:'none',text:'A bag contains 4 red balls and 1 blue ball. Two balls are drawn at the same time from the bag. \\$60 is awarded if a blue ball is among the two drawn and \\$10 is awarded otherwise. Find the expected reward in dollars.',
+                     ans:30,dist:[20,34,35],kind:'draw2_present',total:[4,1],idx:1,present:60,absent:10},
+                    {chart:'none',text:'A box contains 4 yellow balls, 2 red balls and 2 blue balls. Two balls are drawn at the same time from the box. \\$8 is awarded for each yellow ball drawn. Find the expected reward in dollars.',
+                     ans:8,dist:[6,10,9],kind:'draw2_per',total:[4,2,2],idx:0,per:8},
+                    {chart:'table',text:'A box contains 2 red balls, 5 yellow balls and 3 green balls. In a lucky draw a ball is drawn at random and a coupon is awarded: \\$40 for red, \\$80 for yellow, \\$200 for green. Find the expected value of the coupon in dollars.',
+                     intro:'A box contains 2 red balls, 5 yellow balls and 3 green balls. In a lucky draw a ball is drawn at random and a coupon is awarded: \\$40 for red, \\$80 for yellow, \\$200 for green',ask:'Find the expected value of the coupon in dollars.',
+                     values:[40,80,200],counts:[2,5,3],headLabel:'Coupon',ans:108,dist:[100,120,115],kind:'counts'},
+                    {chart:'table',text:'A box contains 4 red cards, 6 yellow cards and 10 blue cards. In a lucky draw a card is drawn at random and a voucher is awarded: \\$25 for red, \\$10 for yellow, \\$40 for blue. Find the expected value of the voucher in dollars.',
+                     intro:'A box contains 4 red cards, 6 yellow cards and 10 blue cards. In a lucky draw a card is drawn at random and a voucher is awarded: \\$25 for red, \\$10 for yellow, \\$40 for blue',ask:'Find the expected value of the voucher in dollars.',
+                     values:[25,10,40],counts:[4,6,10],headLabel:'Voucher',ans:28,dist:[25,30,32],kind:'counts'},
+                    {chart:'none',text:'Two fair dice are thrown in a game. \\$80 is gained if the product of the two numbers is odd and \\$20 is gained otherwise. Find the expected gain of the game in dollars.',
+                     ans:35,dist:[40,30,27.5],kind:'dice2',cond:'prod_odd',r1:80,r2:20},
+                    {chart:'none',text:'Two fair dice are thrown in a game. \\$90 is gained if the sum of the two numbers is 7 and \\$30 is gained otherwise. Find the expected gain of the game in dollars.',
+                     ans:40,dist:[45,35,33],kind:'dice2',cond:'sum_eq:7',r1:90,r2:30},
+                    {chart:'none',text:'Two fair dice are thrown in a game. \\$54 is gained if the two numbers are consecutive integers and \\$36 is gained otherwise. Find the expected gain of the game in dollars.',
+                     ans:41,dist:[45,36,51],kind:'dice2',cond:'consec',r1:54,r2:36},
+                    {chart:'none',text:'In a game, the probability of winning is 0.5. A player gains \\$30 for winning and loses \\$6 for losing. Find the expected gain of the game in dollars.',
+                     values:[30,-6],probs:[0.5,0.5],ans:12,dist:[15,9,10],kind:'probs'},
+                    {chart:'none',text:'A bag contains 2 red balls, 2 yellow balls and 4 blue balls. Two balls are drawn at the same time from the bag. \\$28 is awarded if two blue balls are drawn, \\$14 if exactly one blue ball is drawn and nothing otherwise. Find the expected reward in dollars.',
+                     ans:14,dist:[16,12,20],kind:'draw2_two',total:[2,2,4],idx:2,two:28,one:14},
+                    {chart:'none',text:'A box contains 3 red balls, 4 yellow balls and 5 blue balls. Two balls are drawn at the same time from the box. \\$9 is awarded for each yellow ball drawn. Find the expected reward in dollars.',
+                     ans:6,dist:[4,8,7],kind:'draw2_per',total:[3,4,5],idx:1,per:9},
+                    {chart:'table',text:'A box contains 4 red balls, 5 yellow balls and 1 green ball. In a lucky draw a ball is drawn at random and a coupon is awarded: \\$20 for red, \\$40 for yellow, \\$100 for green. Find the expected value of the coupon in dollars.',
+                     intro:'A box contains 4 red balls, 5 yellow balls and 1 green ball. In a lucky draw a ball is drawn at random and a coupon is awarded: \\$20 for red, \\$40 for yellow, \\$100 for green',ask:'Find the expected value of the coupon in dollars.',
+                     values:[20,40,100],counts:[4,5,1],headLabel:'Coupon',ans:38,dist:[40,35,30],kind:'counts'},
+                    {chart:'none',text:'Two fair dice are thrown in a game. \\$60 is gained if the sum of the two numbers is odd and \\$12 is gained if the sum is even. Find the expected gain of the game in dollars.',
+                     ans:36,dist:[33,42,48],kind:'dice2',cond:'sum_odd',r1:60,r2:12},
+                    {chart:'none',text:'Two fair dice are thrown in a game. \\$24 is gained if the product of the two numbers is a multiple of 4 and \\$12 is gained otherwise. Find the expected gain of the game in dollars.',
+                     ans:17,dist:[20,15,18],kind:'dice2',cond:'prod_mul4',r1:24,r2:12},
+                    {chart:'table',text:'The probabilities that a student takes the bus, the minibus and the train are 0.5, 0.3 and 0.2, and the fares are \\$6, \\$8 and \\$12 respectively. Find the expected fare in dollars.',
+                     intro:'The probabilities that a student takes the bus, the minibus and the train are 0.5, 0.3 and 0.2, and the fares are \\$6, \\$8 and \\$12 respectively',ask:'Find the expected fare in dollars.',
+                     values:[6,8,12],probs:[0.5,0.3,0.2],headLabel:'Fare',ans:7.8,dist:[7.2,8.4,9],kind:'probs'}
+                ]
             },
 
             // ════════════ LEVEL 2 — Paper 2 Ch. 16 More about Probability ════════════
@@ -1786,7 +2305,7 @@
         // Generators keep PLAIN text (QA modules parse it); styling happens here at render time.
         const MATHVAR_SET = new Set('nkPQmxy'.split(''));
         function styleVars(html) {
-            return html.split(/(<[^>]+>|\$[^$]*\$)/).map(seg => {
+            return html.split(/(<svg[\s\S]*?<\/svg>|<[^>]+>|\$[^$]*\$)/).map(seg => {
                 if (seg.charAt(0) === '<' || seg.charAt(0) === '$') return seg; // existing tags / MathJax stay untouched
                 return seg.replace(/(^|[^A-Za-zℓ])([A-Za-zℓ])(?=[^A-Za-zℓ]|$)/g,
                     (m, pre, ch) => pre + (MATHVAR_SET.has(ch) ? '<i class="mathvar">' + ch + '</i>' : ch));
@@ -2145,9 +2664,11 @@
                 return;
             }
 
-            // Levels 1 & 2: 5 single questions, distinct types per game (shuffled order)
+            // Levels 1 & 2: 5 single questions, distinct types per game (shuffled order).
+            // Level 1 has 16 types (t0-t9 legacy + t10-t15 Core); all types are drawn
+            // uniformly at random - no topic weighting or preference.
             const typeOrder = (level === 1)
-                ? MathGen.shuffle([0,1,2,3,4,5,6,7,8,9]).slice(0, NUM_QUESTIONS)
+                ? MathGen.shuffle([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]).slice(0, NUM_QUESTIONS)
                 : MathGen.shuffle([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]).slice(0, NUM_QUESTIONS);
             const usedTexts = new Set();
             const usedOpts = new Set();
@@ -2192,12 +2713,13 @@
             document.getElementById('question-display').classList.remove('hidden');
 
             const displayEl = document.getElementById('question-display');
-            displayEl.innerHTML = styleVars(q.text);
+            displayEl.innerHTML = styleVars(q.qHtml || q.text);
 
             document.getElementById('question-instruction').textContent = q.instruction;
             document.getElementById('paper-hint').textContent =
                 (q.paper === 'TSA') ? 'TSA S3 2021-2025 · ' + q.src :
                 (q.paper === 'Paper 1') ? 'DSE Paper 1 · ' + q.src :
+                (q.paper === 'Core') ? 'Core skill · Level 1 · ' + q.src :
                 'DSE Paper 2 · ' + q.src;
 
             const partLabelEl = document.getElementById('part-label');
@@ -2206,7 +2728,8 @@
 
             // Determine Mode for this specific question — family rule:
             // Paper 2 questions = Multiple Choice only; Paper 1 / TSA = fill-in.
-            currentQuestionMode = (q.paper === 'Paper 2') ? 'mc' : 'fill';
+            // Core-skill questions set their own `mode` (mc or fill) at generation time.
+            currentQuestionMode = q.mode || ((q.paper === 'Paper 2') ? 'mc' : 'fill');
 
             const mcArea = document.getElementById('mc-options');
             const fillArea = document.getElementById('conventional-area');
@@ -2900,7 +3423,10 @@
             quitGame();
         }
         // --- SKIP GATE: Skip unlocks only after a wrong attempt on this question/set ---
-        let skipUnlocked = false;
+        // Testing aid: open the page with ?unlockSkip=1 to keep Skip permanently unlocked.
+        // Students (no query string) are unaffected.
+        const SKIP_TEST_UNLOCK = /[?&]unlockSkip=1(?:&|$)/.test(window.location.search);
+        let skipUnlocked = SKIP_TEST_UNLOCK;
 
         function refreshSkipBtn() {
             const btn = document.getElementById('skip-btn');
@@ -2915,7 +3441,7 @@
 
         function unlockSkip() { skipUnlocked = true; refreshSkipBtn(); }
 
-        function lockSkip() { skipUnlocked = false; refreshSkipBtn(); }
+        function lockSkip() { skipUnlocked = SKIP_TEST_UNLOCK; refreshSkipBtn(); }
 
         // Skip the current question/set: no mark or life is lost.
         function skipQuestion() {
@@ -2957,7 +3483,12 @@
             const usedAns = new Set(currentQuestions.map(q => q.answerStr));
             let q = null, tKey = null, oKey = null, aKey = null, tries = 0;
             do {
-                const idx = (currentLevel === 1) ? MathGen.rand(0, 9) : MathGen.rand(0, 19);
+                // Keep the skipped slot's kind: a Core slot gets another Core type,
+                // an old TSA/Paper 2 slot gets another old type.
+                const curSlot = currentQuestions[currentQuestionIndex];
+                const idx = (currentLevel === 1)
+                    ? ((curSlot && curSlot.paper === 'Core') ? MathGen.rand(10, 15) : MathGen.rand(0, 9))
+                    : MathGen.rand(0, 19);
                 q = (currentLevel === 1) ? MathGen.generateL1(idx) : MathGen.generateL2(idx);
                 tKey = q.text;
                 oKey = [...q.options].sort().join('~');
@@ -3052,6 +3583,9 @@
                     break;
                 case 'use_a':
                     hint = "This part builds on part (a) — reuse the probability you just found. E.g. P(at most / different) = 1 − P(from part (a)). Substitute instead of starting from scratch.";
+                    break;
+                case 'expected_value':
+                    hint = "Expected value = sum of (each value × its probability). For a bag of numbered balls, the probability of a value is its count ÷ total. Multiply each value by that probability and add the results together.";
                     break;
                 default:
                     hint = "Draw the tree diagram first: for each stage, write the probability on each branch. Then decide whether you add or multiply the branches.";
